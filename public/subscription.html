@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription - Google Reviews Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .current-plan {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .current-plan h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .plan-status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        
+        .plan-status.free {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .plan-status.premium {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .plan-status.enterprise {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .pricing-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .pricing-card.popular {
+            border-color: #4285f4;
+            transform: scale(1.05);
+        }
+        
+        .pricing-card.popular::before {
+            content: 'Most Popular';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4285f4;
+            color: white;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .plan-price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4285f4;
+            margin-bottom: 5px;
+        }
+        
+        .plan-period {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .plan-features {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+        
+        .plan-features li {
+            padding: 8px 0;
+            color: #555;
+            position: relative;
+        }
+        
+        .plan-features li::before {
+            content: '✓';
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .plan-features li.unavailable {
+            color: #999;
+        }
+        
+        .plan-features li.unavailable::before {
+            content: '✗';
+            color: #dc3545;
+        }
+        
+        .plan-button {
+            width: 100%;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .plan-button.free {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .plan-button.premium {
+            background: #4285f4;
+            color: white;
+        }
+        
+        .plan-button.enterprise {
+            background: #28a745;
+            color: white;
+        }
+        
+        .plan-button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .plan-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .back-link a {
+            color: #4285f4;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .auth-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Choose Your Plan</h1>
+            <p>Select the perfect plan for your business needs</p>
+        </div>
+        
+        <div id="auth-warning" class="auth-warning" style="display: none;">
+            <strong>Please log in to manage your subscription</strong>
+            <br>
+            <a href="/login.html">Go to Login</a>
+        </div>
+        
+        <div id="current-plan" class="current-plan" style="display: none;">
+            <h3>Your Current Plan</h3>
+            <div id="current-plan-status" class="plan-status free">FREE</div>
+            <div id="current-plan-details"></div>
+        </div>
+        
+        <div class="pricing-grid">
+            <!-- Free Plan -->
+            <div class="pricing-card">
+                <div class="plan-name">Free</div>
+                <div class="plan-price">$0</div>
+                <div class="plan-period">per month</div>
+                <ul class="plan-features">
+                    <li>Up to 50 reviews per month</li>
+                    <li>Basic review monitoring</li>
+                    <li>Email notifications</li>
+                    <li>1 Google Business location</li>
+                    <li class="unavailable">AI-powered responses</li>
+                    <li class="unavailable">Advanced analytics</li>
+                    <li class="unavailable">Priority support</li>
+                </ul>
+                <button class="plan-button free" onclick="selectPlan('free')">
+                    Current Plan
+                </button>
+            </div>
+            
+            <!-- Premium Plan -->
+            <div class="pricing-card popular">
+                <div class="plan-name">Premium</div>
+                <div class="plan-price">$29</div>
+                <div class="plan-period">per month</div>
+                <ul class="plan-features">
+                    <li>Unlimited reviews</li>
+                    <li>Advanced review monitoring</li>
+                    <li>AI-powered response suggestions</li>
+                    <li>Up to 5 Google Business locations</li>
+                    <li>Advanced analytics & insights</li>
+                    <li>Custom response templates</li>
+                    <li>Email & SMS notifications</li>
+                    <li>Priority email support</li>
+                </ul>
+                <button class="plan-button premium" onclick="selectPlan('premium')">
+                    Upgrade to Premium
+                </button>
+            </div>
+            
+            <!-- Enterprise Plan -->
+            <div class="pricing-card">
+                <div class="plan-name">Enterprise</div>
+                <div class="plan-price">$99</div>
+                <div class="plan-period">per month</div>
+                <ul class="plan-features">
+                    <li>Everything in Premium</li>
+                    <li>Unlimited Google Business locations</li>
+                    <li>White-label solution</li>
+                    <li>Custom integrations</li>
+                    <li>Advanced team management</li>
+                    <li>Custom reporting</li>
+                    <li>24/7 phone support</li>
+                    <li>Dedicated account manager</li>
+                </ul>
+                <button class="plan-button enterprise" onclick="selectPlan('enterprise')">
+                    Contact Sales
+                </button>
+            </div>
+        </div>
+        
+        <div class="back-link">
+            <a href="/dashboard">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script>
+        let currentUser = null;
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🔐 Checking authentication for subscription page...');
+            
+            const authStatus = await authManager.checkBothAuth();
+            
+            if (!authStatus.app) {
+                document.getElementById('auth-warning').style.display = 'block';
+                return;
+            }
+            
+            currentUser = authManager.appUser;
+            updateCurrentPlanDisplay();
+            updatePlanButtons();
+        });
+        
+        function updateCurrentPlanDisplay() {
+            if (!currentUser) return;
+            
+            const currentPlanDiv = document.getElementById('current-plan');
+            const statusDiv = document.getElementById('current-plan-status');
+            const detailsDiv = document.getElementById('current-plan-details');
+            
+            currentPlanDiv.style.display = 'block';
+            statusDiv.textContent = currentUser.subscription_status.toUpperCase();
+            statusDiv.className = `plan-status ${currentUser.subscription_status}`;
+            
+            let details = `Active since ${new Date(currentUser.created_at).toLocaleDateString()}`;
+            if (currentUser.subscription_expires_at) {
+                details += `<br>Expires: ${new Date(currentUser.subscription_expires_at).toLocaleDateString()}`;
+            }
+            
+            detailsDiv.innerHTML = details;
+        }
+        
+        function updatePlanButtons() {
+            if (!currentUser) return;
+            
+            const buttons = document.querySelectorAll('.plan-button');
+            buttons.forEach(button => {
+                const planType = button.textContent.toLowerCase().includes('free') ? 'free' :
+                               button.textContent.toLowerCase().includes('premium') ? 'premium' : 'enterprise';
+                
+                if (planType === currentUser.subscription_status) {
+                    button.textContent = 'Current Plan';
+                    button.disabled = true;
+                } else if (planType === 'free' && currentUser.subscription_status !== 'free') {
+                    button.textContent = 'Downgrade';
+                    button.disabled = false;
+                } else {
+                    button.disabled = false;
+                }
+            });
+        }
+        
+        async function selectPlan(planType) {
+            if (!currentUser) {
+                alert('Please log in to change your subscription');
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            if (planType === currentUser.subscription_status) {
+                alert('You are already on this plan');
+                return;
+            }
+            
+            // For demo purposes, we'll just show alerts
+            // In a real implementation, you'd integrate with Stripe or another payment processor
+            
+            switch (planType) {
+                case 'free':
+                    if (confirm('Are you sure you want to downgrade to the free plan? You will lose access to premium features.')) {
+                        await updateSubscription(planType);
+                    }
+                    break;
+                    
+                case 'premium':
+                    alert('Premium plan upgrade coming soon! This would integrate with Stripe for payment processing.');
+                    // In real implementation:
+                    // window.location.href = '/api/stripe/create-checkout-session?plan=premium';
+                    break;
+                    
+                case 'enterprise':
+                    alert('Please contact our sales team for Enterprise pricing and setup.');
+                    // In real implementation:
+                    // window.location.href = 'mailto:sales@yourcompany.com?subject=Enterprise Plan Inquiry';
+                    break;
+            }
+        }
+        
+        async function updateSubscription(planType) {
+            try {
+                const response = await authManager.apiRequest('/app-auth/update-subscription', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        subscription_status: planType
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Subscription updated successfully!');
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Failed to update subscription: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Subscription update error:', error);
+                alert('Failed to update subscription. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>

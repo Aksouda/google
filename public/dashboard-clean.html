@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Google Reviews Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 2rem;
+            font-weight: 300;
+        }
+        
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .tab {
+            background: none;
+            border: none;
+            padding: 15px 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            color: #4285f4;
+            background: #f8f9fa;
+        }
+        
+        .tab.active {
+            color: #4285f4;
+            border-bottom-color: #4285f4;
+            background: #f8f9fa;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .reviews-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .review-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #4285f4;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                align-items: flex-start;
+            }
+            
+            .nav-tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Google Reviews Manager</h1>
+            <div class="user-info">
+                <div>
+                    <strong id="user-name">Loading...</strong>
+                    <div id="user-email" style="font-size: 0.9rem; color: #666;"></div>
+                </div>
+                <button class="logout-btn">Logout</button>
+            </div>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="tab active">Overview</button>
+            <button class="tab">Reviews</button>
+            <button class="tab">Settings</button>
+        </div>
+        
+        <div id="overview" class="tab-content active">
+            <h2 style="margin-bottom: 20px;">Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Total Reviews</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Unanswered Reviews</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4.5</div>
+                    <div class="stat-label">Average Rating</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="reviews" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Reviews Management</h2>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="location-select" style="display: block; margin-bottom: 10px; font-weight: bold;">Select Business Location:</label>
+                <select id="location-select" style="padding: 10px; border-radius: 5px; border: 1px solid #ddd; width: 300px; margin-right: 10px;">
+                    <option value="">Loading locations...</option>
+                </select>
+                <button data-action="load-reviews" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Load Reviews
+                </button>
+                <label style="margin-left: 20px;">
+                    <input type="checkbox" id="unanswered-only" checked> Show only unanswered reviews
+                </label>
+            </div>
+            
+            <div id="reviews-container">
+                <p style="color: #666; text-align: center; padding: 40px;">Select a location and click "Load Reviews" to see reviews</p>
+            </div>
+        </div>
+        
+        <div id="settings" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Settings & Service Status</h2>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">Google My Business Service Status</h3>
+                <div id="gmb-status" style="margin-bottom: 15px;">
+                    <p>Checking service status...</p>
+                </div>
+                <button data-action="test-gmb" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                    Test GMB Access
+                </button>
+                <button data-action="check-status" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Check Status
+                </button>
+            </div>
+
+            <!-- API Test Results -->
+            <div id="api-test-results" style="background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #dee2e6; display: none;">
+                <h4 style="margin-bottom: 10px;">API Test Results</h4>
+                <pre id="test-output" style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9rem;"></pre>
+            </div>
+
+            <!-- Cache Management Section -->
+            <div style="background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #dee2e6; margin-top: 20px;">
+                <h4 style="margin-bottom: 15px;">🚀 Cache Management</h4>
+                <p style="color: #666; margin-bottom: 15px;">Manage API call caching to reduce rate limiting and improve performance.</p>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button data-action="get-cache-stats" style="padding: 10px 20px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        📊 Get Cache Stats
+                    </button>
+                    <button data-action="clear-cache" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        🗑️ Clear Cache
+                    </button>
+                </div>
+
+                <!-- Cache Stats Results -->
+                <div id="cache-stats-results" style="background: #f8f9fa; padding: 15px; border-radius: 5px; display: none;">
+                    <h5 style="margin-bottom: 10px;">Cache Statistics</h5>
+                    <div id="cache-stats-output"></div>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                <h4 style="margin-bottom: 15px;">🛠️ Additional Settings</h4>
+                <p style="color: #666;">More configuration options coming soon!</p>
+                <p style="font-size: 0.9rem; margin-top: 10px;">Configure notifications, auto-responses, rate limiting, and more.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

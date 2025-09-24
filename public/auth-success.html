@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization Complete - Google Reviews Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 1200px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #28a745;
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 20px;
+        }
+        
+        .status-grid {
+            display: grid;
+            gap: 15px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .status-icon-small {
+            font-size: 1.5rem;
+            margin-right: 15px;
+        }
+        
+        .status-text h3 {
+            color: #333;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        
+        .status-text p {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        
+        .continue-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        
+        .continue-btn:hover {
+            background: #218838;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #1565c0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Location Selection Styles */
+        .location-selection-section {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .location-selection-section.active {
+            display: block;
+        }
+
+        .location-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .location-card {
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            text-align: left;
+        }
+
+        .location-card:hover {
+            border-color: #28a745;
+            box-shadow: 0 8px 24px rgba(40, 167, 69, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .location-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .location-card:hover::before {
+            opacity: 1;
+        }
+
+        .location-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .location-card-icon {
+            font-size: 2.5rem;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-radius: 50%;
+            color: white;
+        }
+
+        .location-card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .location-card-address {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 8px 0 20px 0;
+            line-height: 1.4;
+        }
+
+        .location-card-button {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .location-card-button:hover {
+            background: linear-gradient(135deg, #218838, #1ca085);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .section-divider {
+            margin: 40px 0;
+            padding: 20px 0;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .section-subtitle {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">🎉</div>
+        <h1>Authorization Complete!</h1>
+        <p style="color: #666; font-size: 1.1rem; margin-bottom: 30px;">
+            Your Google Business Profile has been successfully connected
+        </p>
+        
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-icon-small">👤</div>
+                <div class="status-text">
+                    <h3>App Account</h3>
+                    <p id="app-status">Connected and verified</p>
+                </div>
+            </div>
+            
+            <div class="status-item">
+                <div class="status-icon-small">🏢</div>
+                <div class="status-text">
+                    <h3>Google Business Profile</h3>
+                    <p id="google-status">Authorized for review management</p>
+                </div>
+            </div>
+            
+            <div class="status-item">
+                <div class="status-icon-small">📍</div>
+                <div class="status-text">
+                    <h3>Business Locations</h3>
+                    <p id="locations-status">Loading available locations...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <strong>🔐 Security Notice:</strong><br>
+            You can revoke this authorization anytime in your Google Account settings. 
+            We only access your business reviews and profile information - never personal data.
+        </div>
+        
+        <!-- Location Selection Section -->
+        <div class="location-selection-section" id="location-selection-section">
+            <div class="section-divider">
+                <h2 class="section-title">Select Your Business Location</h2>
+                <p class="section-subtitle">Choose a location to start managing reviews</p>
+                
+                <div id="location-cards-container">
+                    <div style="text-align: center; padding: 40px 20px; color: #666;">
+                        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #28a745; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <p style="margin-top: 20px;">Loading your business locations...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Continue Button (shown when no locations or as fallback) -->
+        <a href="/dashboard" class="continue-btn" id="continue-btn" style="display: none;">
+            Continue to Dashboard →
+        </a>
+        
+        <p style="margin-top: 20px; color: #666; font-size: 0.9rem;">
+            <a href="/subscription" style="color: #4285f4; text-decoration: none;">
+                Manage Subscription
+            </a> | 
+            <a href="/auth/logout" style="color: #4285f4; text-decoration: none;">
+                Disconnect Google
+            </a>
+        </p>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🔐 Checking authentication status...');
+            
+            try {
+                // Check authentication status
+                const authStatus = await authManager.checkBothAuth();
+                console.log('🔍 Auth status:', authStatus);
+                
+                // Handle different auth scenarios
+                if (!authStatus.app) {
+                    console.log('❌ No app authentication - redirecting to login');
+                    document.getElementById('app-status').textContent = 'Not authenticated';
+                    redirectToLogin('App authentication required');
+                    return;
+                }
+                
+                if (!authStatus.google) {
+                    console.log('❌ No Google Business authentication - redirecting to login');
+                    document.getElementById('app-status').textContent = `Connected as ${authManager.appUser?.email}`;
+                    document.getElementById('google-status').textContent = 'Google Business not connected';
+                    redirectToLogin('Google Business Profile authentication required');
+                    return;
+                }
+                
+                // Both auths are good - proceed with location loading
+                console.log('✅ Full authentication confirmed');
+                document.getElementById('app-status').textContent = `Connected as ${authManager.appUser?.email}`;
+                document.getElementById('google-status').textContent = `Connected as ${authManager.googleUser?.emails?.[0]?.value}`;
+                
+                // Try to get locations and display them as cards
+                try {
+                    console.log('🔍 Fetching business locations...');
+                    
+                    // Wait a moment for all auth to be ready
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    const response = await fetch('/api/gmb/locations');
+                    console.log('📍 Locations API response status:', response.status);
+                    
+                    // Handle different HTTP response codes
+                    if (response.status === 401) {
+                        console.log('🔒 Authentication expired - redirecting to login');
+                        redirectToLogin('Authentication expired. Please log in again.');
+                        return;
+                    }
+                    
+                    if (response.status === 403) {
+                        console.log('🚫 Authorization insufficient - redirecting to login');
+                        redirectToLogin('Insufficient permissions. Please reconnect your accounts.');
+                        return;
+                    }
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('📍 Locations data:', data);
+                        
+                        // Handle the nested data structure
+                        const locations = data.data?.locations || data.locations || [];
+                        const locationCount = locations.length;
+                        document.getElementById('locations-status').textContent = 
+                            `${locationCount} business location${locationCount !== 1 ? 's' : ''} found`;
+                        
+                        // Show location cards
+                        await displayLocationCards(locations);
+                    } else {
+                        const errorData = await response.json().catch(() => ({}));
+                        console.error('❌ Locations API error:', response.status, errorData);
+                        
+                        // Check if it's an auth-related error
+                        if (errorData.error && (
+                            errorData.error.includes('UNAUTHORIZED') || 
+                            errorData.error.includes('UNAUTHENTICATED') ||
+                            errorData.error.includes('TOKEN_EXPIRED')
+                        )) {
+                            redirectToLogin('Session expired. Please log in again.');
+                            return;
+                        }
+                        
+                        document.getElementById('locations-status').textContent = 
+                            `Unable to load locations (${response.status})`;
+                        showContinueButton();
+                    }
+                } catch (error) {
+                    console.error('❌ Error fetching locations:', error);
+                    
+                    // Check if it's a network/auth error
+                    if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                        console.log('🌐 Network or auth error - redirecting to login');
+                        redirectToLogin('Connection error. Please try logging in again.');
+                        return;
+                    }
+                    
+                    document.getElementById('locations-status').textContent = 'Error loading locations';
+                    showContinueButton();
+                }
+                
+                // Enable continue button after checks
+                document.getElementById('continue-btn').classList.remove('loading');
+                
+            } catch (error) {
+                console.error('❌ Auth check error:', error);
+                redirectToLogin('Authentication check failed');
+            }
+        });
+        
+        // Function to handle redirects to login with user-friendly messaging
+        function redirectToLogin(reason) {
+            console.log(`🔄 Redirecting to login: ${reason}`);
+            
+            // Show user-friendly message
+            const container = document.getElementById('location-cards-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #dc3545;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
+                        <h3 style="color: #dc3545; margin-bottom: 15px;">Authentication Required</h3>
+                        <p style="margin-bottom: 20px;">${reason}</p>
+                        <p style="color: #666; font-size: 0.9rem;">Redirecting to login page...</p>
+                        <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #dc3545; border-radius: 50%; animation: spin 1s linear infinite; margin-top: 15px;"></div>
+                    </div>
+                `;
+            }
+            
+            // Update status displays
+            document.getElementById('locations-status').textContent = reason;
+            
+            // Redirect after showing the message
+            setTimeout(() => {
+                window.location.href = '/login.html';
+            }, 2000);
+        }
+
+        // Function to display location cards
+        async function displayLocationCards(locations) {
+            const container = document.getElementById('location-cards-container');
+            
+            if (locations.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                        <h3 style="color: #555; margin-bottom: 10px;">No Business Locations Found</h3>
+                        <p>Set up your Google Business Profile first to continue.</p>
+                    </div>
+                `;
+                showContinueButton();
+                return;
+            }
+
+            // Show location selection section
+            document.getElementById('location-selection-section').classList.add('active');
+            
+            console.log('📍 Hybrid approach: Account Management API for list, Business Information API for addresses');
+            console.log('📍 Total locations received from Account Management API:', locations.length);
+            
+            // Show loading cards first
+            const loadingCardsHTML = locations.map((location) => {
+                const displayName = location.displayName || location.title || location.name;
+                return `
+                    <div class="location-card">
+                        <div class="location-card-header">
+                            <div class="location-card-icon">🏢</div>
+                            <div>
+                                <h3 class="location-card-title">${displayName}</h3>
+                            </div>
+                        </div>
+                        <div class="location-card-address">Loading address via Business Information API...</div>
+                        <button class="location-card-button" disabled>
+                            Loading...
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = `<div class="location-cards-grid">${loadingCardsHTML}</div>`;
+
+            // Fetch address details using Business Information API for each location
+            const locationPromises = locations.map(async (location, index) => {
+                try {
+                    const locationId = location.name ? location.name.split('/').pop() : null;
+                    if (!locationId) {
+                        console.error(`📍 Location ${index + 1}: No location ID found`);
+                        return { ...location, addressInfo: 'Location ID unavailable' };
+                    }
+
+                    console.log(`📍 Location ${index + 1}: Fetching address via Business Information API for ${locationId}`);
+                    
+                    // Call our backend endpoint that uses Business Information API
+                    const response = await fetch(`/api/gmb/locations/${locationId}`);
+                    if (response.ok) {
+                        const detailData = await response.json();
+                        if (detailData.success) {
+                            console.log(`📍 Location ${index + 1} address data from Business Information API:`, detailData.data);
+                            console.log(`📍 Location ${index + 1} available address fields:`, Object.keys(detailData.data || {}));
+
+                            const addressInfo = formatAddress(detailData.data);
+
+                            // If we still don't have address, provide business-appropriate fallback
+                            const finalAddressInfo = (addressInfo === 'Address not available') 
+                                ? getBusinessTypeDescription(detailData.data)
+                                : addressInfo;
+
+                            return { ...location, ...detailData.data, addressInfo: finalAddressInfo };
+                        } else {
+                            console.warn(`📍 Location ${index + 1}: Business Information API returned error:`, detailData.message);
+                        }
+                    } else {
+                        console.warn(`📍 Location ${index + 1}: HTTP ${response.status}:`, response.statusText);
+                    }
+                } catch (error) {
+                    console.error(`📍 Location ${index + 1}: Error fetching address details:`, error);
+                }
+
+                // Fallback if address detail fetch fails
+                const fallbackAddress = getBusinessTypeDescription(location);
+                return { ...location, addressInfo: fallbackAddress };
+            });
+
+            try {
+                const detailedLocations = await Promise.all(locationPromises);
+                console.log('📍 All location addresses fetched via Business Information API:', detailedLocations);
+
+                // Update cards with address information
+                const cardsHTML = detailedLocations.map((location, index) => {
+                    const displayName = location.displayName || location.title || location.name;
+                    const addressInfo = location.addressInfo || 'Address unavailable';
+
+                    return `
+                        <div class="location-card" data-location-name="${location.name}" data-location-display-name="${displayName}">
+                            <div class="location-card-header">
+                                <div class="location-card-icon">🏢</div>
+                                <div>
+                                    <h3 class="location-card-title">${displayName}</h3>
+                                </div>
+                            </div>
+                            <div class="location-card-address">${addressInfo}</div>
+                            <button class="location-card-button">
+                                Manage Reviews →
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = `<div class="location-cards-grid">${cardsHTML}</div>`;
+
+                // Add click event listeners to location cards
+                container.querySelectorAll('.location-card').forEach(card => {
+                    card.addEventListener('click', () => selectLocation(card));
+                });
+
+            } catch (error) {
+                console.error('📍 Error updating location cards with addresses:', error);
+                // Show error message
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #dc3545;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                        <h3 style="color: #dc3545; margin-bottom: 10px;">Error Loading Location Addresses</h3>
+                        <p>Unable to fetch address information via Business Information API.</p>
+                        <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Function to get business type description when address is not available
+        function getBusinessTypeDescription(locationData) {
+            // Check for business categories to provide context
+            if (locationData && locationData.categories) {
+                if (locationData.categories.primaryCategory) {
+                    return `${locationData.categories.primaryCategory.displayName || 'Business'} • Reviews Management Available`;
+                }
+            }
+            
+            // Check for phone number to show it's contactable
+            if (locationData && locationData.phoneNumbers && locationData.phoneNumbers.primaryPhone) {
+                return `Business Location • ${locationData.phoneNumbers.primaryPhone}`;
+            }
+            
+            // Check for website
+            if (locationData && locationData.websiteUri) {
+                return `Business Location • Website Available`;
+            }
+            
+            // Default fallback
+            return 'Service Business • Reviews Management Available';
+        }
+
+        // Function to format address - Updated for Business Information API structured address
+        function formatAddress(location) {
+            console.log('📍 formatAddress called with location:', location);
+            
+            // Business Information API returns structured address in 'address' and 'storefrontAddress' fields
+            // According to guide: addressLines, locality, administrativeArea, postalCode, regionCode
+            let address = location.address || location.storefrontAddress;
+            
+            if (!address) {
+                console.log('📍 formatAddress: No address or storefrontAddress provided');
+                console.log('📍 formatAddress: Available location fields:', Object.keys(location || {}));
+                return 'Address not available';
+            }
+            
+            if (typeof address === 'string') {
+                console.log('📍 formatAddress: Address is string:', address);
+                return address;
+            }
+            
+            console.log('📍 formatAddress: Processing structured address from Business Information API');
+            console.log('📍 formatAddress: Address object:', JSON.stringify(address, null, 2));
+            console.log('📍 formatAddress: Address fields:', Object.keys(address || {}));
+            
+            const parts = [];
+            
+            // Process structured address fields as per Google's Business Information API guide:
+            // addressLines, locality, administrativeArea, postalCode, regionCode
+            
+            // 1. Address Lines (street address)
+            if (address.addressLines) {
+                if (Array.isArray(address.addressLines)) {
+                    // Filter out empty strings and add valid address lines
+                    const validLines = address.addressLines.filter(line => line && line.trim());
+                    parts.push(...validLines);
+                    console.log('📍 Added addressLines (array):', validLines);
+                } else if (typeof address.addressLines === 'string' && address.addressLines.trim()) {
+                    parts.push(address.addressLines);
+                    console.log('📍 Added addressLines (string):', address.addressLines);
+                }
+            }
+            
+            // 2. Locality (city)
+            if (address.locality && address.locality.trim()) {
+                parts.push(address.locality);
+                console.log('📍 Added locality (city):', address.locality);
+            }
+            
+            // 3. Administrative Area (state/province)
+            if (address.administrativeArea && address.administrativeArea.trim()) {
+                parts.push(address.administrativeArea);
+                console.log('📍 Added administrativeArea (state):', address.administrativeArea);
+            }
+            
+            // 4. Postal Code
+            if (address.postalCode && address.postalCode.trim()) {
+                parts.push(address.postalCode);
+                console.log('📍 Added postalCode:', address.postalCode);
+            }
+            
+            // 5. Region Code (country)
+            if (address.regionCode && address.regionCode.trim()) {
+                // Convert country codes to readable format if needed
+                const countryCode = address.regionCode.toUpperCase();
+                parts.push(countryCode);
+                console.log('📍 Added regionCode (country):', countryCode);
+            }
+            
+            // Check for alternative field names
+            if (address.city && !address.locality) {
+                parts.push(address.city);
+                console.log('📍 Added city:', address.city);
+            }
+            if (address.state && !address.administrativeArea) {
+                parts.push(address.state);
+                console.log('📍 Added state:', address.state);
+            }
+            if (address.country && !address.regionCode) {
+                parts.push(address.country);
+                console.log('📍 Added country:', address.country);
+            }
+            if (address.zipCode && !address.postalCode) {
+                parts.push(address.zipCode);
+                console.log('📍 Added zipCode:', address.zipCode);
+            }
+            if (address.streetAddress && !address.addressLines) {
+                parts.push(address.streetAddress);
+                console.log('📍 Added streetAddress:', address.streetAddress);
+            }
+            
+            // Try to extract any string values from the object
+            if (parts.length === 0) {
+                console.log('📍 formatAddress: No standard fields found, trying to extract any string values...');
+                Object.keys(address).forEach(key => {
+                    const value = address[key];
+                    if (typeof value === 'string' && value.trim()) {
+                        parts.push(value);
+                        console.log(`📍 Added ${key}:`, value);
+                    } else if (Array.isArray(value) && value.length > 0) {
+                        parts.push(...value.filter(v => typeof v === 'string' && v.trim()));
+                        console.log(`📍 Added array ${key}:`, value);
+                    }
+                });
+            }
+            
+            console.log('📍 formatAddress: Final address parts:', parts);
+            
+            const formattedAddress = parts.join(', ');
+            if (!formattedAddress) {
+                console.log('📍 formatAddress: No address parts found, returning fallback');
+                console.log('📍 formatAddress: Complete address object keys:', Object.keys(address));
+                return 'Business Location • Reviews Management Available';
+            }
+            
+            console.log('📍 formatAddress: Formatted address result:', formattedAddress);
+            return formattedAddress;
+        }
+
+        // Function to select a location and navigate to dashboard
+        function selectLocation(cardElement) {
+            const locationName = cardElement.getAttribute('data-location-name');
+            const locationDisplayName = cardElement.getAttribute('data-location-display-name');
+            
+            console.log(`📍 Selected location: ${locationDisplayName}`);
+            
+            // Store selected location in sessionStorage
+            sessionStorage.setItem('selectedLocation', JSON.stringify({
+                name: locationName,
+                displayName: locationDisplayName
+            }));
+            
+            // Navigate to dashboard with reviews tab
+            window.location.href = '/dashboard#reviews';
+        }
+
+        // Function to show continue button as fallback
+        function showContinueButton() {
+            document.getElementById('continue-btn').style.display = 'inline-block';
+        }
+    </script>
+</body>
+</html>

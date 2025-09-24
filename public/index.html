@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Reviews Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            margin-top: 50px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        
+        .auth-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .google-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+        }
+        
+        .google-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+        }
+        
+        .user-info {
+            display: none;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .user-info.show {
+            display: block;
+        }
+        
+        .reviews-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            min-height: 200px;
+        }
+        
+        .reviews-section h2 {
+            color: #666;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin-top: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .google-btn {
+                padding: 12px 24px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Google Reviews Manager</h1>
+        
+        <div class="auth-section">
+            <div id="login-section">
+                <a href="/login.html" class="google-btn">
+                    🚀 Get Started
+                </a>
+                <div style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; font-size: 0.9rem; color: #1565c0;">
+                    <strong>🎯 How it works:</strong><br>
+                    • Create your account to manage app access<br>
+                    • <strong>Authorize Google Business Profile access</strong><br>
+                    • <strong>Manage reviews and automate responses</strong><br>
+                    • <strong>Monitor multiple business locations</strong>
+                </div>
+            </div>
+            
+            <div id="user-info" class="user-info">
+                <h3>Welcome, <span id="user-name"></span>!</h3>
+                <p>Email: <span id="user-email"></span></p>
+                <button onclick="logout()" style="margin-top: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Logout
+                </button>
+            </div>
+        </div>
+        
+        <div class="reviews-section">
+            <h2>Reviews Dashboard</h2>
+            <div id="reviews-container">
+                <div class="loading">
+                    Login to view and manage your Google Reviews
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is logged in on page load
+        window.addEventListener('load', function() {
+            checkAuthStatus();
+            handleAuthError();
+        });
+        
+        function checkAuthStatus() {
+            fetch('/api/user')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.user) {
+                        showUserInfo(data.user);
+                        loadReviews();
+                    } else {
+                        showLoginSection();
+                    }
+                })
+                .catch(error => {
+                    console.log('Not authenticated:', error);
+                    showLoginSection();
+                });
+        }
+        
+        function showUserInfo(user) {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('user-info').classList.add('show');
+            document.getElementById('user-name').textContent = user.displayName || 'User';
+            document.getElementById('user-email').textContent = user.emails?.[0]?.value || 'No email';
+        }
+        
+        function showLoginSection() {
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('user-info').classList.remove('show');
+        }
+        
+        function logout() {
+            window.location.href = '/auth/logout';
+        }
+        
+        function loadReviews() {
+            document.getElementById('reviews-container').innerHTML = 
+                '<div class="loading">Loading reviews...</div>';
+            
+            // Placeholder for future reviews loading
+            setTimeout(() => {
+                document.getElementById('reviews-container').innerHTML = 
+                    '<p style="text-align: center; color: #666;">Reviews functionality coming soon!</p>';
+            }, 1000);
+        }
+        
+        function handleAuthError() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            const message = urlParams.get('message');
+            
+            if (error === 'auth_failed') {
+                showMessage('Authentication failed. Please try again.', 'error');
+            } else if (message === 'login_required') {
+                showMessage('Please log in to access the dashboard.', 'info');
+            } else if (message === 'auth_expired') {
+                showMessage('Your session has expired. Please log in again.', 'warning');
+            } else if (message === 'error') {
+                showMessage('An error occurred. Please try logging in again.', 'error');
+            }
+            
+            // Clean up the URL
+            if (error || message) {
+                window.history.replaceState({}, document.title, '/');
+            }
+        }
+        
+        function showMessage(text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed; 
+                top: 20px; 
+                right: 20px; 
+                padding: 15px 20px; 
+                border-radius: 8px; 
+                color: white; 
+                font-weight: bold; 
+                z-index: 1000; 
+                max-width: 300px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            `;
+            
+            switch(type) {
+                case 'error':
+                    messageDiv.style.background = '#dc3545';
+                    break;
+                case 'warning':
+                    messageDiv.style.background = '#ffc107';
+                    messageDiv.style.color = '#212529';
+                    break;
+                case 'info':
+                    messageDiv.style.background = '#17a2b8';
+                    break;
+                default:
+                    messageDiv.style.background = '#28a745';
+            }
+            
+            messageDiv.textContent = text;
+            document.body.appendChild(messageDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
