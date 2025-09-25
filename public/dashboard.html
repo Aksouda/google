@@ -486,6 +486,7 @@
         <div class="nav-tabs">
             <button class="tab active">Overview</button>
             <button class="tab">Reviews</button>
+            <button class="tab">Locations</button>
             <button class="tab">Settings</button>
         </div>
         
@@ -645,6 +646,39 @@
             
             <div id="reviews-container">
                 <p style="color: #666; text-align: center; padding: 40px;">Select a location and click "Load Reviews" to see reviews</p>
+            </div>
+        </div>
+        
+        <div id="locations" class="tab-content">
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 10px; margin: 20px 0;">
+                <div style="font-size: 48px; margin-bottom: 20px;">🏢</div>
+                <h2 style="color: #495057; margin-bottom: 15px;">Location Cards</h2>
+                <p style="color: #666; font-size: 1.1rem; margin-bottom: 30px; line-height: 1.6;">
+                    View and manage your business locations with enhanced cards showing address information and business type.
+                </p>
+                
+                <button onclick="window.open('/auth-success.html', '_blank')" 
+                        style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #4285f4, #34a853); color: white; text-decoration: none; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 10px rgba(66, 133, 244, 0.3);"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(66, 133, 244, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 10px rgba(66, 133, 244, 0.3)'">
+                    🚀 Open Location Cards
+                </button>
+                
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-top: 30px; text-align: left;">
+                    <h3 style="color: #1976d2; margin-bottom: 15px;">✨ Enhanced Location Cards Features:</h3>
+                    <ul style="color: #1976d2; line-height: 2;">
+                        <li><strong>🏢 Physical Locations:</strong> Shows full address when available</li>
+                        <li><strong>🔧 Service Businesses:</strong> Clearly marked with service indicators</li>
+                        <li><strong>💻 Online Businesses:</strong> Perfect for digital service providers</li>
+                        <li><strong>📝 Review Management:</strong> Direct access to review tools</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                    <p style="color: #856404; margin: 0; font-size: 0.9rem;">
+                        <strong>💡 Note:</strong> The location cards page is optimized for business setup and provides detailed information about each of your Google Business Profile locations.
+                    </p>
+                </div>
             </div>
         </div>
         

@@ -212,6 +212,30 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
         }
+        
+        .service-business {
+            border-left: 4px solid #2196f3;
+        }
+        
+        .online-business {
+            border-left: 4px solid #9c27b0;
+        }
+        
+        .no-address {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .location-card-footer {
+            margin-top: 15px;
+        }
+        
+        .location-card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
 
         .section-divider {
             margin: 40px 0;
@@ -365,10 +389,33 @@
                     if (response.ok) {
                         const data = await response.json();
                         console.log('📍 Locations data:', data);
+                        console.log('📍 FULL RAW LOCATIONS RESPONSE:', JSON.stringify(data, null, 2));
                         
                         // Handle the nested data structure
                         const locations = data.data?.locations || data.locations || [];
                         const locationCount = locations.length;
+                        
+                        // Debug: Check each location for address data
+                        locations.forEach((loc, index) => {
+                            console.log(`🔍 Location ${index + 1} RAW DATA:`, JSON.stringify(loc, null, 2));
+                            
+                            const addressFields = ['address', 'storefrontAddress', 'serviceArea', 'physicalAddress', 'mailingAddress', 'locationKey'];
+                            const foundFields = [];
+                            
+                            addressFields.forEach(field => {
+                                if (loc[field]) {
+                                    foundFields.push(`${field}: ${JSON.stringify(loc[field])}`);
+                                }
+                            });
+                            
+                            console.log(`📍 Location ${index + 1} (${loc.displayName}) address fields:`, foundFields.length > 0 ? foundFields : 'NONE');
+                            
+                            if (loc.locationKey?.placeId) {
+                                console.log(`🗝️ Location ${index + 1} PlaceId: ${loc.locationKey.placeId}`);
+                                console.log(`🌍 Google Maps: https://maps.google.com/maps?cid=${loc.locationKey.placeId}`);
+                            }
+                        });
+                        
                         document.getElementById('locations-status').textContent = 
                             `${locationCount} business location${locationCount !== 1 ? 's' : ''} found`;
                         
@@ -485,7 +532,97 @@
             
             container.innerHTML = `<div class="location-cards-grid">${loadingCardsHTML}</div>`;
 
-            // Fetch address details using Business Information API for each location
+            // Prefer batch resolve via Google Places to speed up and improve accuracy
+            try {
+                const enrichResp = await fetch('/api/gmb/locations/resolve-addresses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ locations })
+                });
+                if (enrichResp.ok) {
+                    const enriched = await enrichResp.json();
+                    if (enriched.success && enriched.data?.locations) {
+                        console.log('✅ Addresses resolved via Google Places:', enriched.data.locations);
+                        const detailedLocations = enriched.data.locations;
+                        
+                        // Update cards with address information
+                        const cardsHTML = detailedLocations.map((location, index) => {
+                            const displayName = location.displayName || location.title || location.name;
+                            const addressInfo = location.addressInfo || 'Address unavailable';
+                            const hasPhysicalAddress = location.hasPhysicalAddress || false;
+                            
+                            // Determine card icon and style based on business type
+                            let cardIcon = '🏢';
+                            let addressClass = '';
+                            let addressDisplay = addressInfo;
+                            
+                            if (!hasPhysicalAddress) {
+                                if (addressInfo.includes('Service Business')) {
+                                    cardIcon = '🔧'; // Service business icon
+                                    addressClass = 'service-business';
+                                } else if (addressInfo.includes('No Physical Address')) {
+                                    cardIcon = '💻'; // Online business icon
+                                    addressClass = 'online-business';
+                                }
+                            }
+                            
+                            if (!hasPhysicalAddress && addressInfo === 'Address not available') {
+                                addressDisplay = `
+                                    <span class="no-address">📍 No physical address listed</span>
+                                    <small style="display: block; color: #666; margin-top: 5px; font-size: 0.8rem;">
+                                        This may be a service-based or online business
+                                    </small>
+                                `;
+                            }
+
+                            return `
+                                <div class="location-card ${addressClass}" data-location-name="${location.name}" data-location-display-name="${displayName}">
+                                    <div class="location-card-header">
+                                        <div class="location-card-icon">${cardIcon}</div>
+                                        <div style="flex: 1;">
+                                            <h3 class="location-card-title">${displayName}</h3>
+                                        </div>
+                                        ${!hasPhysicalAddress ? '<span style="background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 500;">SERVICE</span>' : ''}
+                                    </div>
+                                    <div class="location-card-address">${addressDisplay}</div>
+                                    <div class="location-card-footer">
+                                        <button class="location-card-button">
+                                            📝 Manage Reviews
+                                        </button>
+                                        ${location.places?.placeId ? `<small style="display:block; color:#666; font-size:0.75rem; margin-top:6px;">PlaceId: ${location.places.placeId}</small>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        container.innerHTML = `<div class="location-cards-grid">${cardsHTML}</div>`;
+
+                        // Add click event listeners to location cards
+                        container.querySelectorAll('.location-card').forEach(card => {
+                            card.addEventListener('click', () => {
+                                const locationName = card.getAttribute('data-location-name');
+                                const locationDisplayName = card.getAttribute('data-location-display-name');
+                                console.log(`📍 Selected location: ${locationDisplayName} (${locationName})`);
+                                const locationId = (locationName || '').split('/').pop();
+                                if (locationId) {
+                                    sessionStorage.setItem('selectedLocation', JSON.stringify({
+                                        name: locationName,
+                                        displayName: locationDisplayName
+                                    }));
+                                    window.location.href = '/dashboard.html#reviews';
+                                }
+                            });
+                        });
+
+                        showContinueButton();
+                        return; // Done with batch path
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ Batch resolve via Places failed, falling back to per-location BI details', e);
+            }
+
+            // Fallback: Fetch address details using Business Information API for each location
             const locationPromises = locations.map(async (location, index) => {
                 try {
                     const locationId = location.name ? location.name.split('/').pop() : null;
@@ -495,6 +632,20 @@
                     }
 
                     console.log(`📍 Location ${index + 1}: Fetching address via Business Information API for ${locationId}`);
+                    
+                    // DEBUG: Add comprehensive debugging for the first location
+                    if (index === 0) {
+                        console.log(`🐛 DEBUG: Testing comprehensive debug endpoint for location: ${locationId}`);
+                        try {
+                            const debugResponse = await fetch(`/api/gmb/debug/location/${locationId}`);
+                            if (debugResponse.ok) {
+                                const debugData = await debugResponse.json();
+                                console.log(`🐛 DEBUG: Comprehensive debug results:`, debugData);
+                            }
+                        } catch (debugError) {
+                            console.log(`❌ DEBUG: Debug endpoint failed:`, debugError);
+                        }
+                    }
                     
                     // Call our backend endpoint that uses Business Information API
                     const response = await fetch(`/api/gmb/locations/${locationId}`);
@@ -507,11 +658,19 @@
                             const addressInfo = formatAddress(detailData.data);
 
                             // If we still don't have address, provide business-appropriate fallback
-                            const finalAddressInfo = (addressInfo === 'Address not available') 
-                                ? getBusinessTypeDescription(detailData.data)
-                                : addressInfo;
+                            let finalAddressInfo = addressInfo;
+                            
+                            if (addressInfo === 'Address not available') {
+                                // Try to get a better description for service businesses
+                                finalAddressInfo = getBusinessTypeDescription(detailData.data);
+                                
+                                // Also indicate that this might be a service business without physical location
+                                if (finalAddressInfo === 'Service Business • Reviews Management Available') {
+                                    finalAddressInfo = 'Service Business • No Physical Address Listed';
+                                }
+                            }
 
-                            return { ...location, ...detailData.data, addressInfo: finalAddressInfo };
+                            return { ...location, ...detailData.data, addressInfo: finalAddressInfo, hasPhysicalAddress: addressInfo !== 'Address not available' };
                         } else {
                             console.warn(`📍 Location ${index + 1}: Business Information API returned error:`, detailData.message);
                         }
@@ -535,19 +694,52 @@
                 const cardsHTML = detailedLocations.map((location, index) => {
                     const displayName = location.displayName || location.title || location.name;
                     const addressInfo = location.addressInfo || 'Address unavailable';
+                    const hasPhysicalAddress = location.hasPhysicalAddress || false;
+                    
+                    // Determine card icon and style based on business type
+                    let cardIcon = '🏢';
+                    let addressClass = '';
+                    let addressDisplay = addressInfo;
+                    
+                    if (!hasPhysicalAddress) {
+                        if (addressInfo.includes('Service Business')) {
+                            cardIcon = '🔧'; // Service business icon
+                            addressClass = 'service-business';
+                        } else if (addressInfo.includes('No Physical Address')) {
+                            cardIcon = '💻'; // Online business icon
+                            addressClass = 'online-business';
+                        }
+                    }
+                    
+                    // Enhanced address display
+                    if (!hasPhysicalAddress && addressInfo === 'Address not available') {
+                        addressDisplay = `
+                            <span class="no-address">📍 No physical address listed</span>
+                            <small style="display: block; color: #666; margin-top: 5px; font-size: 0.8rem;">
+                                This may be a service-based or online business
+                            </small>
+                        `;
+                    }
 
                     return `
-                        <div class="location-card" data-location-name="${location.name}" data-location-display-name="${displayName}">
+                        <div class="location-card ${addressClass}" data-location-name="${location.name}" data-location-display-name="${displayName}">
                             <div class="location-card-header">
-                                <div class="location-card-icon">🏢</div>
-                                <div>
+                                <div class="location-card-icon">${cardIcon}</div>
+                                <div style="flex: 1;">
                                     <h3 class="location-card-title">${displayName}</h3>
                                 </div>
+                                ${!hasPhysicalAddress ? '<span style="background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 500;">SERVICE</span>' : ''}
                             </div>
-                            <div class="location-card-address">${addressInfo}</div>
-                            <button class="location-card-button">
-                                Manage Reviews →
-                            </button>
+                            <div class="location-card-address">${addressDisplay}</div>
+                            <div class="location-card-footer">
+                                <button class="location-card-button">
+                                    📝 Manage Reviews
+                                </button>
+                                ${!hasPhysicalAddress ? 
+                                    `<small style="color: #666; font-size: 0.75rem; margin-top: 8px; display: block;">
+                                        Perfect for service businesses and online operations
+                                    </small>` : ''}
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -604,7 +796,8 @@
             
             // Business Information API returns structured address in 'address' and 'storefrontAddress' fields
             // According to guide: addressLines, locality, administrativeArea, postalCode, regionCode
-            let address = location.address || location.storefrontAddress;
+            // Also check for alternative field names that might be returned
+            let address = location.address || location.storefrontAddress || location.physicalAddress || location.mailingAddress;
             
             if (!address) {
                 console.log('📍 formatAddress: No address or storefrontAddress provided');

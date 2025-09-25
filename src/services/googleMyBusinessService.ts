@@ -440,41 +440,35 @@ export class GoogleMyBusinessService {
         });
         
         let response;
+        
+        // Try Business Information API first to get address data
         try {
-          // Try Account Management API first (this is the correct API for listing locations)
-          console.log('🔄 fetchBusinessLocations: Trying Account Management API first');
+          console.log('🔄 fetchBusinessLocations: Trying Business Information API first (includes addresses)');
           
-          // Check if the API structure exists
-          if (!this.accountManagement?.accounts?.locations?.list) {
-            console.error('❌ fetchBusinessLocations: Account Management API structure not available');
-            throw new Error('Account Management API structure not available');
-          }
-          
-          // Build parameters object, only including defined values
-          const accountParams: any = {
-            parent: normalizedAccountName,
-            pageSize
-          };
-          if (pageToken) {
-            accountParams.pageToken = pageToken;
-          }
-          
-          console.log('🔍 fetchBusinessLocations: Account Management API params:', accountParams);
-          response = await this.accountManagement.accounts.locations.list(accountParams);
-          console.log('✅ fetchBusinessLocations: Account Management API succeeded');
-        } catch (accountApiError: any) {
-          console.error('❌ fetchBusinessLocations: Error with Account Management API');
-          console.error('❌ fetchBusinessLocations: Account API error details:', {
-            status: accountApiError.response?.status,
-            message: accountApiError.message,
-            data: accountApiError.response?.data
-          });
-          
-          // Try Business Information API as fallback (with required readMask)
-          console.log('🔄 fetchBusinessLocations: Retrying with Business Information API (with required readMask)');
-          
-          // Try different readMask combinations to get location names
+          // Try different readMask combinations to get location names and addresses
           const readMaskOptions = [
+            // Most comprehensive first - include all address possibilities
+            'name,displayName,address,storefrontAddress,serviceArea,physicalAddress,mailingAddress,locationKey,primaryPhone,websiteUri,categories,title,storedName,languageCode,storeCode',
+            // Alternative comprehensive combinations
+            'name,displayName,address,storefrontAddress,serviceArea,locationKey,primaryPhone,websiteUri,categories,title,storedName',
+            'name,displayName,address,storefrontAddress,serviceArea,locationKey,primaryPhone,websiteUri,categories',
+            // Try just address variations
+            'name,displayName,address,storefrontAddress,serviceArea,physicalAddress,mailingAddress,locationKey',
+            'name,displayName,address,storefrontAddress,serviceArea,locationKey',
+            'name,displayName,address,storefrontAddress,serviceArea',
+            'name,displayName,address,locationKey',
+            'name,displayName,storefrontAddress,locationKey',
+            'name,displayName,serviceArea,locationKey',
+            // Original combinations with address
+            'name,displayName,address,primaryPhone,websiteUri,categories,title,storedName,languageCode,storeCode',
+            'name,displayName,address,primaryPhone,websiteUri,categories,title,storedName',
+            'name,displayName,address,primaryPhone,websiteUri,categories',
+            'name,displayName,address,title,storedName,languageCode,storeCode',
+            'name,displayName,address,title,storedName',
+            'name,displayName,address,title', 
+            'name,displayName,address,storeCode',
+            'name,displayName,address',
+            // Fallback without address
             'name,displayName,title,storedName,languageCode,storeCode',
             'name,displayName,title,storedName',
             'name,displayName,title', 
@@ -503,6 +497,43 @@ export class GoogleMyBusinessService {
               console.log('🔍 fetchBusinessLocations: Business Information API params:', businessParams);
               response = await this.businessInfo.accounts.locations.list(businessParams);
               console.log(`✅ fetchBusinessLocations: Business Information API succeeded with readMask: ${readMask}`);
+              
+              // Debug: Check what fields are actually returned
+              const sampleLocation = response.data.locations?.[0];
+              if (sampleLocation) {
+                console.log('📍 fetchBusinessLocations: Sample location fields:', Object.keys(sampleLocation));
+                console.log('📍 fetchBusinessLocations: FULL sample location data:', JSON.stringify(sampleLocation, null, 2));
+                
+                // Check all possible address-related fields
+                const addressFields = ['address', 'storefrontAddress', 'serviceArea', 'physicalAddress', 'mailingAddress', 'locationKey'];
+                addressFields.forEach(field => {
+                  if (sampleLocation[field]) {
+                    console.log(`🎯 fetchBusinessLocations: Found ${field}:`, JSON.stringify(sampleLocation[field], null, 2));
+                  } else {
+                    console.log(`❌ fetchBusinessLocations: Missing ${field}`);
+                  }
+                });
+                
+                // Check if locationKey contains placeId for Places API lookup
+                if (sampleLocation.locationKey?.placeId) {
+                  console.log(`🗝️ fetchBusinessLocations: PlaceId found: ${sampleLocation.locationKey.placeId}`);
+                  console.log(`🌍 fetchBusinessLocations: Google Maps link: https://maps.google.com/maps?cid=${sampleLocation.locationKey.placeId}`);
+                }
+              }
+              
+              // Log address status for all locations
+              response.data.locations?.forEach((loc: any, index: number) => {
+                const addressStatus = [];
+                if (loc.address) addressStatus.push('address');
+                if (loc.storefrontAddress) addressStatus.push('storefrontAddress');
+                if (loc.serviceArea) addressStatus.push('serviceArea');
+                if (loc.physicalAddress) addressStatus.push('physicalAddress');
+                if (loc.mailingAddress) addressStatus.push('mailingAddress');
+                if (loc.locationKey?.placeId) addressStatus.push(`placeId(${loc.locationKey.placeId})`);
+                
+                console.log(`🏠 Location ${index + 1} (${loc.displayName || loc.name}): ${addressStatus.length > 0 ? addressStatus.join(', ') : 'NO ADDRESS DATA'}`);
+              });
+              
               readMaskSuccess = true;
               break;
             } catch (error: any) {
@@ -524,8 +555,42 @@ export class GoogleMyBusinessService {
               console.error('🔍 fetchBusinessLocations: Full Google API error:', JSON.stringify(businessApiError.response.data.error, null, 2));
             }
             
-            throw new Error(`Failed to fetch locations from both APIs: ${accountApiError.message}`);
+            // Fallback to Account Management API (no addresses but basic location data)
+            console.log('🔄 fetchBusinessLocations: Falling back to Account Management API (no addresses)');
+            
+            try {
+              // Check if the API structure exists
+              if (!this.accountManagement?.accounts?.locations?.list) {
+                console.error('❌ fetchBusinessLocations: Account Management API structure not available');
+                throw new Error('Account Management API structure not available');
+              }
+              
+              // Build parameters object, only including defined values
+              const accountParams: any = {
+                parent: normalizedAccountName,
+                pageSize
+              };
+              if (pageToken) {
+                accountParams.pageToken = pageToken;
+              }
+              
+              console.log('🔍 fetchBusinessLocations: Account Management API params:', accountParams);
+              response = await this.accountManagement.accounts.locations.list(accountParams);
+              console.log('✅ fetchBusinessLocations: Account Management API succeeded (without addresses)');
+            } catch (accountApiError: any) {
+              console.error('❌ fetchBusinessLocations: Error with Account Management API fallback');
+              console.error('❌ fetchBusinessLocations: Account API error details:', {
+                status: accountApiError?.response?.status,
+                message: accountApiError?.message,
+                data: accountApiError?.response?.data
+              });
+              
+              throw new Error(`Failed to fetch locations from both APIs. Business Info: ${businessApiError?.message}, Account Management: ${accountApiError?.message}`);
+            }
           }
+        } catch (outerError: any) {
+          console.error('❌ fetchBusinessLocations: Outer error:', outerError);
+          throw outerError;
         }
         
         console.log('✅ fetchBusinessLocations: Locations response received');
@@ -542,9 +607,20 @@ export class GoogleMyBusinessService {
           storedName: (loc as any).storedName,
           storeCode: (loc as any).storeCode,
           languageCode: (loc as any).languageCode,
+          hasAddress: !!loc.address,
+          addressKeys: loc.address ? Object.keys(loc.address) : [],
           // Show all available properties
           allKeys: Object.keys(loc)
         })));
+        
+        // Log address information specifically
+        locations.forEach((loc, index) => {
+          if (loc.address) {
+            console.log(`📍 Location ${index + 1} (${loc.displayName}) HAS ADDRESS:`, JSON.stringify(loc.address, null, 2));
+          } else {
+            console.log(`📍 Location ${index + 1} (${loc.displayName}) NO ADDRESS - Available fields:`, Object.keys(loc));
+          }
+        });
 
         // Enhance locations with better display names
         const enhancedLocations = locations.map(loc => {
@@ -624,17 +700,69 @@ export class GoogleMyBusinessService {
       let locationData: BusinessLocation | null = null;
       let lastError: any = null;
 
-      // Approach 1: Try Business Information API locations.get
+      // Approach 1: Try Business Information API locations.get with comprehensive field request
       try {
         console.log(`🔄 fetchLocationDetails: Trying Business Information API locations.get`);
-        const response = await this.businessInfo.locations.get({
-          name: fullLocationName,
-          readMask: 'name,displayName'
-        });
-        locationData = response.data as BusinessLocation;
-        console.log(`✅ fetchLocationDetails: Business Information API locations.get succeeded`);
+        console.log(`🔄 fetchLocationDetails: Original request name: ${fullLocationName}`);
+
+        // IMPORTANT: Business Information API expects name as 'locations/{location_id}'
+        // If the constructed name includes the account prefix, strip it for this call
+        let biLocationName = fullLocationName;
+        if (biLocationName.startsWith('accounts/')) {
+          const extractedId = biLocationName.split('/').pop();
+          if (extractedId) {
+            biLocationName = `locations/${extractedId}`;
+          }
+        }
+        console.log(`🔄 fetchLocationDetails: Using BI name: ${biLocationName}`);
+        
+        // Use a focused readMask for address resolution only (storefrontAddress is valid in BI v1)
+        const readMaskOptions = [
+          'storefrontAddress'
+        ];
+        
+        let success = false;
+        for (const readMask of readMaskOptions) {
+          try {
+            console.log(`🔄 fetchLocationDetails: Trying readMask: ${readMask}`);
+            const response = await this.businessInfo.locations.get({
+              name: biLocationName,
+              readMask: readMask
+            });
+            locationData = response.data as BusinessLocation;
+            console.log(`✅ fetchLocationDetails: Business Information API succeeded with readMask: ${readMask}`);
+            console.log(`📍 fetchLocationDetails: Raw response keys:`, Object.keys(locationData));
+            console.log(`📍 fetchLocationDetails: Full response data:`, JSON.stringify(locationData, null, 2));
+            success = true;
+            break;
+          } catch (maskError: any) {
+            console.log(`❌ fetchLocationDetails: readMask '${readMask}' failed:`, maskError.message);
+            if (readMask === 'name,displayName') {
+              throw maskError; // If even basic fields fail, give up
+            }
+          }
+        }
+        
+        if (!success) {
+          throw new Error('All readMask attempts failed');
+        }
+        
+        if (locationData) {
+          console.log(`📍 fetchLocationDetails: Final location data inspection:`, {
+            hasStorefrontAddress: !!(locationData as any).storefrontAddress,
+            storefrontAddress: (locationData as any).storefrontAddress,
+            allKeys: Object.keys(locationData),
+            displayName: (locationData as any).displayName
+          });
+        }
+        
       } catch (error: any) {
-        console.log(`❌ fetchLocationDetails: Business Information API locations.get failed:`, error.message);
+        console.log(`❌ fetchLocationDetails: All Business Information API attempts failed:`, error.message);
+        console.log(`❌ fetchLocationDetails: Error details:`, {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
         lastError = error;
       }
 
@@ -664,7 +792,9 @@ export class GoogleMyBusinessService {
         }
       }
 
-      // Approach 3: If still no data, return a basic location object
+      // Removed legacy v4.9 API usage to avoid conflicts; rely on BI only
+      
+      // Approach 4: If still no data, return a basic location object
       if (!locationData) {
         console.log(`⚠️ fetchLocationDetails: All approaches failed, creating basic location object`);
         const extractedLocationId = fullLocationName.split('/').pop() || locationName;
@@ -674,16 +804,34 @@ export class GoogleMyBusinessService {
         } as BusinessLocation;
         console.log(`✅ fetchLocationDetails: Created basic location object`);
       }
+      
+      // Removed Places fallback; use BI-only
+      
+      // Build formattedAddress from BI storefrontAddress only
+      let formattedAddress: string | undefined;
+      const adr: any = (locationData as any)?.storefrontAddress;
+      if (adr) {
+        const parts: string[] = [];
+        if (Array.isArray(adr.addressLines)) parts.push(...adr.addressLines.filter(Boolean));
+        if (adr.locality) parts.push(adr.locality);
+        if (adr.administrativeArea) parts.push(adr.administrativeArea);
+        if (adr.postalCode) parts.push(adr.postalCode);
+        if (adr.regionCode) parts.push(adr.regionCode);
+        formattedAddress = parts.filter(Boolean).join(', ');
+      }
+
+      const enriched: any = {
+        ...(locationData as any),
+        formattedAddress: formattedAddress || 'Address not available'
+      };
 
       console.log('✅ fetchLocationDetails: Business Information API call successful');
-      console.log('📊 fetchLocationDetails: Response status:', lastError?.response?.status || 200);
-      console.log('📍 fetchLocationDetails: Location data:', JSON.stringify(locationData, null, 2));
-      console.log('📍 fetchLocationDetails: Available fields:', Object.keys(locationData || {}));
+      console.log('📍 fetchLocationDetails: Formatted address:', enriched.formattedAddress);
       
       // Cache the result for 5 minutes
-      this.setCachedData(cacheKey, locationData, 5 * 60 * 1000);
+      this.setCachedData(cacheKey, enriched, 5 * 60 * 1000);
 
-      return locationData;
+      return enriched as BusinessLocation;
 
     } catch (error: any) {
       console.error('❌ fetchLocationDetails: Business Information API failed:', error);

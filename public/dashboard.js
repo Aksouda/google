@@ -173,9 +173,9 @@ function setupEventListeners() {
     // Tab buttons
     const tabButtons = document.querySelectorAll('.tab');
     tabButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(event) {
             const tabName = this.textContent.toLowerCase();
-            showTab(tabName);
+            showTab(tabName, event);
         });
     });
     
@@ -653,7 +653,7 @@ function showTab(tabName, event = null) {
     });
     
     // Remove active class from all tab buttons
-    document.querySelectorAll('.tab-nav button').forEach(button => {
+    document.querySelectorAll('.tab').forEach(button => {
         button.classList.remove('active');
     });
     
@@ -664,11 +664,13 @@ function showTab(tabName, event = null) {
     if (event && event.target) {
         event.target.classList.add('active');
     } else {
-        // If no event, find and activate the corresponding tab button
-        const tabButton = document.querySelector(`[onclick*="showTab('${tabName}')"]`);
-        if (tabButton) {
-            tabButton.classList.add('active');
-        }
+        // If no event, find and activate the corresponding tab button by text content
+        const tabButtons = document.querySelectorAll('.tab');
+        tabButtons.forEach(button => {
+            if (button.textContent.toLowerCase() === tabName.toLowerCase()) {
+                button.classList.add('active');
+            }
+        });
     }
     
     // Smart loading based on tab
@@ -745,17 +747,20 @@ function loadBusinessLocations() {
         .then(data => {
             console.log('🔍 Location API Response Data:', data);
             if (data.success) {
-                // Cache the locations data
+                // Cache the basic locations data first
                 AppState.locationsData = data.data;
                 AppState.locationsLoaded = true;
                 
-                // Update UI
+                // Update UI with basic location data
                 updateLocationsUI(data.data);
                 
                 // Update overview stats with new location data
                 updateOverviewStats();
                 
                 console.log(`✅ Locations loaded and cached: ${data.data.locations.length} locations`);
+                
+                // Now enrich with address data via separate API call (non-blocking)
+                enrichLocationsWithAddresses(data.data.locations);
             } else {
                 // Check if this is a session expiration error
                 if (isAuthenticationError(data)) {
@@ -763,11 +768,9 @@ function loadBusinessLocations() {
                     return;
                 }
                 
-                const select = document.getElementById('location-select');
+                console.error('❌ Location API returned error:', data.message || data.error);
+                showError(`Failed to load locations: ${data.message || data.error}`);
                 select.innerHTML = '<option value="">Error loading locations</option>';
-                select.disabled = false;
-                console.error('❌ Failed to load locations:', data.message);
-                showError('Failed to load business locations: ' + data.message);
             }
         })
         .catch(error => {
@@ -806,6 +809,50 @@ function loadBusinessLocations() {
         });
 }
 
+// Enrich locations with address data using separate API call
+async function enrichLocationsWithAddresses(locations) {
+    console.log('🏠 Enriching locations with address data...');
+    
+    try {
+        const response = await fetch('/api/gmb/locations/enrich-addresses', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ locations })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                console.log(`✅ Address enrichment successful: ${data.data.addressesFound}/${data.data.totalLocations} locations have addresses`);
+                
+                // Update cached location data with address information
+                AppState.locationsData.locations = data.data.locations;
+                
+                // Update UI with enriched data
+                updateLocationsUI(AppState.locationsData);
+                
+                // Log address information for debugging
+                data.data.locations.forEach((location, index) => {
+                    if (location.fullAddress) {
+                        console.log(`🏠 Location ${index + 1} (${location.displayName}) address:`, location.addressInfo);
+                    } else {
+                        console.log(`🏠 Location ${index + 1} (${location.displayName}) no address available`);
+                    }
+                });
+            } else {
+                console.warn('⚠️ Address enrichment API returned error:', data.message);
+            }
+        } else {
+            console.warn('⚠️ Address enrichment API call failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('❌ Error enriching locations with addresses:', error);
+        // Don't show error to user as this is supplementary functionality
+    }
+}
+
 function updateLocationsUI(locationsData) {
     const select = document.getElementById('location-select');
     const locations = locationsData.locations;
@@ -824,7 +871,14 @@ function updateLocationsUI(locationsData) {
         locations.forEach(location => {
             const option = document.createElement('option');
             option.value = location.name;
-            option.textContent = location.displayName || location.name;
+            
+            // Include address in display text if available
+            let displayText = location.displayName || location.name;
+            if (location.addressInfo && location.addressInfo !== 'Address not available' && location.addressInfo !== 'Error fetching address') {
+                displayText += ` - ${location.addressInfo}`;
+            }
+            
+            option.textContent = displayText;
             select.appendChild(option);
         });
         select.disabled = false;
