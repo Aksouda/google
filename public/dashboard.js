@@ -182,12 +182,43 @@ function setupEventListeners() {
     // Reviews section buttons
     const loadReviewsButtons = document.querySelectorAll('[data-action="load-reviews"]');
     loadReviewsButtons.forEach(button => {
-        button.addEventListener('click', loadReviews);
+        // Make the primary button behave like refreshReviews to always fetch most recent
+        button.addEventListener('click', refreshReviews);
     });
+
+    // When the user picks a location from the select, treat first load like refresh
+    const locationSelectEl = document.getElementById('location-select');
+    if (locationSelectEl) {
+        locationSelectEl.addEventListener('change', () => {
+            const labelEl = document.getElementById('selected-location-label');
+            const selectedOption = locationSelectEl.options[locationSelectEl.selectedIndex];
+            if (labelEl && selectedOption) {
+                labelEl.textContent = `Selected: ${selectedOption.textContent}`;
+            }
+            // Fetch most recent on first selection
+            refreshReviews();
+        });
+    }
     
     // GMB service buttons
     const testGMBBtn = document.querySelector('[data-action="test-gmb"]');
     if (testGMBBtn) testGMBBtn.addEventListener('click', testGMBService);
+
+    // Locations tab: open location cards without inline handlers (CSP safe)
+    const openCardsBtn = document.getElementById('open-location-cards-btn');
+    if (openCardsBtn) {
+        openCardsBtn.addEventListener('click', () => {
+            window.open('/auth-success.html', '_blank');
+        });
+        openCardsBtn.addEventListener('mouseover', () => {
+            openCardsBtn.style.transform = 'translateY(-2px)';
+            openCardsBtn.style.boxShadow = '0 4px 20px rgba(66, 133, 244, 0.4)';
+        });
+        openCardsBtn.addEventListener('mouseout', () => {
+            openCardsBtn.style.transform = 'translateY(0)';
+            openCardsBtn.style.boxShadow = '0 2px 10px rgba(66, 133, 244, 0.3)';
+        });
+    }
     
     const checkStatusBtn = document.querySelector('[data-action="check-status"]');
     if (checkStatusBtn) checkStatusBtn.addEventListener('click', checkGMBStatus);
@@ -891,6 +922,8 @@ function updateLocationsUI(locationsData) {
                 select.value = locationData.name;
                 AppState.currentLocation = locationData.name;
                 AppState.currentLocationId = locationData.name.split('/').pop();
+                const labelEl = document.getElementById('selected-location-label');
+                if (labelEl) labelEl.textContent = `Selected: ${locationData.displayName || locationData.name}`;
                 console.log(`📍 Pre-selected location: ${locationData.displayName}`);
                 
                 // Clear the stored selection after using it
@@ -898,7 +931,7 @@ function updateLocationsUI(locationsData) {
                 
                 // Auto-load reviews for the pre-selected location
                 setTimeout(() => {
-                    loadReviews();
+                    refreshReviews();
                 }, 500);
             } catch (error) {
                 console.error('Error parsing selected location:', error);
@@ -922,10 +955,35 @@ function loadReviews() {
     const unansweredOnly = document.getElementById('unanswered-only').checked;
     const container = document.getElementById('reviews-container');
     
-    const selectedLocation = locationSelect.value;
+    // Prefer the select value, but tolerate empty after actions (e.g., reply) by using fallbacks
+    let selectedLocation = locationSelect.value;
     if (!selectedLocation) {
-        showError('Please select a business location first');
-        return;
+        // Fallback 1: previously selected location stored in sessionStorage
+        try {
+            const saved = sessionStorage.getItem('selectedLocation');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.name) {
+                    selectedLocation = parsed.name;
+                }
+            }
+        } catch {}
+
+        // Fallback 2: derive full name from AppState.currentLocationId and known locations
+        if (!selectedLocation && AppState.currentLocationId && AppState.locationsData?.locations) {
+            const match = AppState.locationsData.locations.find(l => {
+                try { return (l.name || '').endsWith('/' + AppState.currentLocationId); } catch { return false; }
+            });
+            if (match && match.name) {
+                selectedLocation = match.name;
+            }
+        }
+
+        // If still not available, show the hint and stop
+        if (!selectedLocation) {
+            showError('Please select a business location first');
+            return;
+        }
     }
     
     // Extract location ID from the full location name
@@ -1351,9 +1409,7 @@ function displayReviews(reviewData, unansweredOnly, isAppending = false) {
     const loadMoreHtml = paginationInfo.hasNextPage ? `
         <div style="text-align: center; margin: 30px 0; padding: 20px;">
             <button id="load-more-reviews" data-action="load-more-reviews" 
-                    style="padding: 12px 24px; background: #4285f4; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
-                    onmouseover="this.style.background='#3367d6'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
-                    onmouseout="this.style.background='#4285f4'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                    style="padding: 12px 24px; background: #4285f4; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 📄 Load More Reviews
             </button>
         </div>
@@ -1374,6 +1430,22 @@ function displayReviews(reviewData, unansweredOnly, isAppending = false) {
     } else {
         // Replace all content
         container.innerHTML = summaryHtml + reviewsHtml + loadMoreHtml;
+    }
+
+    // Bind click listener for load more (CSP-safe, no inline handlers)
+    const loadMoreBtn = document.getElementById('load-more-reviews');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', loadMoreReviews);
+        loadMoreBtn.addEventListener('mouseover', () => {
+            loadMoreBtn.style.background = '#3367d6';
+            loadMoreBtn.style.transform = 'translateY(-1px)';
+            loadMoreBtn.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+        });
+        loadMoreBtn.addEventListener('mouseout', () => {
+            loadMoreBtn.style.background = '#4285f4';
+            loadMoreBtn.style.transform = 'translateY(0)';
+            loadMoreBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        });
     }
     
     // Setup event listeners for review action buttons
@@ -1457,9 +1529,24 @@ async function loadMoreReviews() {
     });
     
     if (!paginationInfo) {
-        console.log('⚠️ No pagination info available - reviews may not have been loaded yet');
-        showToast('Please load reviews first before trying to load more', 'info');
-        return;
+        // Try to bootstrap pagination from cached review data to avoid forcing a reload
+        const cached = AppState.reviewsData[cacheKey];
+        if (cached && (cached.nextPageToken || cached.hasMoreReviews)) {
+            AppState.reviewsPagination[cacheKey] = {
+                hasMorePages: !!(cached.hasMoreReviews || cached.nextPageToken),
+                hasNextPage: !!(cached.hasMoreReviews || cached.nextPageToken),
+                nextPageToken: cached.nextPageToken || 'continue',
+                totalReviewsFetched: cached.reviews ? cached.reviews.length : (cached.totalReviews || 0),
+                currentCount: cached.reviews ? cached.reviews.length : 0,
+                lastPageToken: cached.nextPageToken || undefined,
+                currentIndex: cached.reviews ? cached.reviews.length : 0
+            };
+            console.log('🧭 Bootstrapped pagination from cached data, continuing load more...');
+        } else {
+            console.log('⚠️ No pagination info available - reviews may not have been loaded yet');
+            showToast('Please load reviews first before trying to load more', 'info');
+            return;
+        }
     }
     
     if (!paginationInfo.hasNextPage || !paginationInfo.nextPageToken) {
@@ -1792,31 +1879,13 @@ function postReply(reviewName, textareaId, buttonElement) {
                     console.log('🗑️ Cleared all review cache (no locationId available)');
                 }
                 
-                // Always reload reviews after successful reply to ensure we see the updated data
-                console.log('🔄 Reloading reviews after successful reply to show updated status');
-                
+                // Update the review in place for immediate feedback (do not reload reviews)
                 try {
-                    // Update the review in place for immediate feedback
                     updateReviewWithReply(reviewName, replyText);
-                    
-                    // Hide the manual reply section
                     const reviewId = reviewName.split('/').pop();
                     toggleManualReply(reviewId);
-                    
-                    // Wait a moment for Google API to process, then refresh
-                    setTimeout(() => {
-                        console.log('🔄 Refreshing reviews to show latest reply status');
-                        loadReviews();
-                    }, 1500);
                 } catch (domError) {
                     console.error('❌ Error updating DOM after successful reply:', domError);
-                    console.log('🔄 Falling back to full review reload with delay');
-                    
-                    // Wait 2 seconds for Google API to process the reply before reloading
-                    setTimeout(() => {
-                        console.log('🔄 Reloading reviews after API processing delay');
-                        loadReviews();
-                    }, 2000);
                 }
                 
                 // Clear debounce flag on success
@@ -1988,17 +2057,7 @@ function updateReviewWithReply(reviewName, replyText) {
             }, 2000);
         }
     } else {
-        console.log('⚠️ Could not find review card, will reload reviews instead');
-        // Clear cache and reload reviews after delay to ensure fresh data
-                        const cacheKey = `${AppState.currentLocationId}:${AppState.showUnansweredOnly || false}`;
-        delete AppState.reviewsData[cacheKey];
-        console.log('🗑️ Cleared review cache to fetch fresh data');
-        
-        // Wait 2 seconds for Google API to process the reply before reloading
-        setTimeout(() => {
-            console.log('🔄 Reloading reviews after API processing delay');
-            loadReviews();
-        }, 2000);
+        console.log('⚠️ Could not find review card; leaving list as-is (no auto reload)');
     }
 }
 

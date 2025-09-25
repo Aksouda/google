@@ -365,6 +365,21 @@
                 
                 // Try to get locations and display them as cards
                 try {
+                    // Pre-fetch cache short-circuit: if cards are cached, render and skip API calls
+                    const cachedHTML = getCachedLocationCards();
+                    if (cachedHTML) {
+                        const container = document.getElementById('location-cards-container');
+                        container.innerHTML = cachedHTML;
+                        document.getElementById('location-selection-section').classList.add('active');
+                        showContinueButton();
+                        // Re-bind click handlers on cached cards
+                        container.querySelectorAll('.location-card').forEach(card => {
+                            card.addEventListener('click', () => selectLocation(card));
+                        });
+                        console.log('🗄️ Loaded location cards from cache (pre-fetch). Skipping API calls.');
+                        return;
+                    }
+
                     console.log('🔍 Fetching business locations...');
                     
                     // Wait a moment for all auth to be ready
@@ -489,9 +504,49 @@
             }, 2000);
         }
 
+        // Simple cache helpers for location cards
+        const LOCATION_CARDS_CACHE_KEY = 'cached_location_cards_html';
+        const LOCATION_CARDS_CACHE_TS_KEY = 'cached_location_cards_ts';
+        const LOCATION_CARDS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+        function getCachedLocationCards() {
+            try {
+                const tsStr = localStorage.getItem(LOCATION_CARDS_CACHE_TS_KEY);
+                const html = localStorage.getItem(LOCATION_CARDS_CACHE_KEY);
+                if (!tsStr || !html) return null;
+                const ts = parseInt(tsStr, 10);
+                if (isNaN(ts)) return null;
+                if (Date.now() - ts > LOCATION_CARDS_TTL_MS) return null;
+                return html;
+            } catch {
+                return null;
+            }
+        }
+
+        function setCachedLocationCards(html) {
+            try {
+                localStorage.setItem(LOCATION_CARDS_CACHE_KEY, html || '');
+                localStorage.setItem(LOCATION_CARDS_CACHE_TS_KEY, String(Date.now()));
+            } catch {}
+        }
+
         // Function to display location cards
         async function displayLocationCards(locations) {
             const container = document.getElementById('location-cards-container');
+
+            // Try to hydrate from cache first
+            const cached = getCachedLocationCards();
+            if (cached) {
+                container.innerHTML = cached;
+                document.getElementById('location-selection-section').classList.add('active');
+                showContinueButton();
+                console.log('🗄️ Loaded location cards from cache');
+                // Re-bind click handlers for cached cards
+                container.querySelectorAll('.location-card').forEach(card => {
+                    card.addEventListener('click', () => selectLocation(card));
+                });
+                return;
+            }
             
             if (locations.length === 0) {
                 container.innerHTML = `
@@ -596,6 +651,8 @@
                         }).join('');
 
                         container.innerHTML = `<div class="location-cards-grid">${cardsHTML}</div>`;
+                        // cache rendered cards
+                        setCachedLocationCards(container.innerHTML);
 
                         // Add click event listeners to location cards
                         container.querySelectorAll('.location-card').forEach(card => {
@@ -745,6 +802,8 @@
                 }).join('');
 
                 container.innerHTML = `<div class="location-cards-grid">${cardsHTML}</div>`;
+                // cache rendered cards
+                setCachedLocationCards(container.innerHTML);
 
                 // Add click event listeners to location cards
                 container.querySelectorAll('.location-card').forEach(card => {

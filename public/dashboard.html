@@ -588,6 +588,7 @@
                         ← Back to Location Selection
                     </button>
                     <h2 style="display: inline; margin: 0;">Reviews Management</h2>
+                    <div id="selected-location-label" style="margin-top: 6px; color: #6c757d; font-size: 0.95rem;"></div>
                 </div>
                 <div>
                     <button data-action="refresh-reviews" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">
@@ -629,7 +630,7 @@
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <button data-action="load-reviews" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                            Load Reviews
+                            🔄 Refresh Reviews
                         </button>
                         <button data-action="debug-pagination" style="padding: 8px 16px; background: #ffc107; color: black; border: none; border-radius: 6px; cursor: pointer;">
                             🔍 Debug
@@ -657,10 +658,8 @@
                     View and manage your business locations with enhanced cards showing address information and business type.
                 </p>
                 
-                <button onclick="window.open('/auth-success.html', '_blank')" 
-                        style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #4285f4, #34a853); color: white; text-decoration: none; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 10px rgba(66, 133, 244, 0.3);"
-                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(66, 133, 244, 0.4)'"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 10px rgba(66, 133, 244, 0.3)'">
+                <button id="open-location-cards-btn"
+                        style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #4285f4, #34a853); color: white; text-decoration: none; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 10px rgba(66, 133, 244, 0.3);">
                     🚀 Open Location Cards
                 </button>
                 
