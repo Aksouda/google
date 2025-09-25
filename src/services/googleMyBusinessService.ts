@@ -597,36 +597,82 @@ export class GoogleMyBusinessService {
     try {
       console.log(`🔍 fetchLocationDetails: Using Business Information API to fetch address details for: ${locationName}`);
 
-      // Use Business Information API locations.get with comprehensive address readMask
-      const readMaskOptions = [
-        'name,displayName,address,storefrontAddress,primaryPhone,websiteUri,categories',
-        'name,displayName,address,storefrontAddress',
-        'name,displayName,address',
-        'name,displayName,storefrontAddress', 
-        'name,displayName'
-      ];
-      
-      let locationData: BusinessLocation | null = null;
-      let lastError: any = null;
-
-      for (const readMask of readMaskOptions) {
-        try {
-          console.log(`🔄 fetchLocationDetails: Trying readMask: ${readMask}`);
-          const response = await this.businessInfo.locations.get({
-            name: locationName,
-            readMask: readMask
-          });
-          locationData = response.data as BusinessLocation;
-          console.log(`✅ fetchLocationDetails: Business Information API succeeded with readMask: ${readMask}`);
-          break; // Exit loop on first success
-        } catch (error: any) {
-          lastError = error;
-          console.log(`❌ fetchLocationDetails: readMask '${readMask}' failed:`, error.message);
+      // Ensure we have the full location name format: accounts/{account_id}/locations/{location_id}
+      let fullLocationName = locationName;
+      if (!locationName.includes('accounts/')) {
+        console.log('🔄 fetchLocationDetails: Location name missing account prefix, constructing full name...');
+        
+        // Get the first account to construct the full location name
+        const accountsResponse = await this.accountManagement.accounts.list({ pageSize: 1 });
+        const accounts = accountsResponse.data.accounts;
+        
+        if (accounts && accounts.length > 0) {
+          const accountName = accounts[0].name;
+          // Handle different input formats
+          if (locationName.startsWith('locations/')) {
+            fullLocationName = `${accountName}/${locationName}`;
+          } else {
+            fullLocationName = `${accountName}/locations/${locationName}`;
+          }
+          console.log(`🔍 fetchLocationDetails: Constructed full location name: ${fullLocationName}`);
+        } else {
+          throw new Error('No accounts found to construct full location name');
         }
       }
 
+      // Try multiple approaches to get location details
+      let locationData: BusinessLocation | null = null;
+      let lastError: any = null;
+
+      // Approach 1: Try Business Information API locations.get
+      try {
+        console.log(`🔄 fetchLocationDetails: Trying Business Information API locations.get`);
+        const response = await this.businessInfo.locations.get({
+          name: fullLocationName,
+          readMask: 'name,displayName'
+        });
+        locationData = response.data as BusinessLocation;
+        console.log(`✅ fetchLocationDetails: Business Information API locations.get succeeded`);
+      } catch (error: any) {
+        console.log(`❌ fetchLocationDetails: Business Information API locations.get failed:`, error.message);
+        lastError = error;
+      }
+
+      // Approach 2: If that failed, try to find the location in the locations list
       if (!locationData) {
-        throw new Error(`All readMask attempts failed for ${locationName}. Last error: ${lastError?.message}`);
+        try {
+          console.log(`🔄 fetchLocationDetails: Trying to find location in accounts.locations.list`);
+          const extractedLocationId = fullLocationName.split('/').pop();
+          
+          // Get locations list and find the matching one
+          const locationsResponse = await this.fetchBusinessLocations(100);
+          const matchingLocation = locationsResponse.locations.find(loc => 
+            loc.name === fullLocationName || 
+            loc.name.endsWith(extractedLocationId || '') ||
+            loc.name.includes(extractedLocationId || '')
+          );
+          
+          if (matchingLocation) {
+            locationData = matchingLocation;
+            console.log(`✅ fetchLocationDetails: Found location in locations list`);
+          } else {
+            console.log(`❌ fetchLocationDetails: Location not found in locations list`);
+          }
+        } catch (error: any) {
+          console.log(`❌ fetchLocationDetails: Error searching locations list:`, error.message);
+          lastError = error;
+        }
+      }
+
+      // Approach 3: If still no data, return a basic location object
+      if (!locationData) {
+        console.log(`⚠️ fetchLocationDetails: All approaches failed, creating basic location object`);
+        const extractedLocationId = fullLocationName.split('/').pop() || locationName;
+        locationData = {
+          name: fullLocationName,
+          displayName: `Location ${extractedLocationId}`
+        } as BusinessLocation;
+        console.log(`✅ fetchLocationDetails: Created basic location object`);
       }
 
       console.log('✅ fetchLocationDetails: Business Information API call successful');
@@ -1016,6 +1062,31 @@ export class GoogleMyBusinessService {
         }
 
         console.log('✅ replyToReview: Review reply posted successfully');
+
+        // Extract location ID from review name to clear cached reviews for this location
+        // Review name format: accounts/{account_id}/locations/{location_id}/reviews/{review_id}
+        const locationIdMatch = reviewName.match(/locations\/(\d+)\/reviews/);
+        if (locationIdMatch) {
+          const locationId = locationIdMatch[1];
+          console.log(`🗑️ replyToReview: Clearing cached reviews for location ID: ${locationId}`);
+          
+          // Clear all cached review data for this location
+          // Cache keys might be in different formats:
+          // - reviews:accounts/-/locations/{locationId}:...
+          // - reviews:accounts/{accountId}/locations/{locationId}:...
+          const keysToDelete = Array.from(this.cache.keys()).filter(key => 
+            key.startsWith('reviews:') && key.includes(`locations/${locationId}`)
+          );
+          
+          keysToDelete.forEach(key => {
+            this.cache.delete(key);
+            console.log(`🗑️ replyToReview: Cleared cache key: ${key}`);
+          });
+          
+          console.log(`✅ replyToReview: Cleared ${keysToDelete.length} cached review entries for location ${locationId}`);
+        } else {
+          console.log('⚠️ replyToReview: Could not extract location ID from review name, cache not cleared');
+        }
 
         return {
           success: true,

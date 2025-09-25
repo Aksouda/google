@@ -643,7 +643,7 @@ function logout() {
 }
 
 // Tab Management Functions
-function showTab(tabName) {
+function showTab(tabName, event = null) {
     // Update app state
     AppState.currentTab = tabName;
     
@@ -652,14 +652,24 @@ function showTab(tabName) {
         content.classList.remove('active');
     });
     
-    // Remove active class from all tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-nav button').forEach(button => {
+        button.classList.remove('active');
     });
     
     // Show selected tab
     document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
+    
+    // Set active class on the clicked tab button (if event provided)
+    if (event && event.target) {
+        event.target.classList.add('active');
+    } else {
+        // If no event, find and activate the corresponding tab button
+        const tabButton = document.querySelector(`[onclick*="showTab('${tabName}')"]`);
+        if (tabButton) {
+            tabButton.classList.add('active');
+        }
+    }
     
     // Smart loading based on tab
     console.log(`📊 Switching to ${tabName} tab`);
@@ -1080,7 +1090,7 @@ function displayReviews(reviewData, unansweredOnly, isAppending = false) {
 
     const reviewsHtml = reviews.map(review => {
         const starRating = getStarRating(review.starRating);
-        const hasReply = review.reviewReply;
+        const hasReply = review.reviewReply && review.reviewReply.comment;
         
         // Debug: Check if we're showing replied reviews when we shouldn't
         if (unansweredOnly && hasReply) {
@@ -1104,7 +1114,9 @@ function displayReviews(reviewData, unansweredOnly, isAppending = false) {
                 repliedAt: recentReply.timestamp,
                 timeSinceReply: new Date() - new Date(recentReply.timestamp),
                 currentlyHasReply: !!hasReply,
-                googleReplyData: review.reviewReply
+                reviewReplyObject: review.reviewReply,
+                reviewReplyComment: review.reviewReply?.comment,
+                reviewReplyKeys: review.reviewReply ? Object.keys(review.reviewReply) : null
             });
             
             // Show warning in UI
@@ -1726,13 +1738,22 @@ function postReply(reviewName, textareaId, buttonElement) {
                     console.log('🗑️ Cleared all review cache (no locationId available)');
                 }
                 
+                // Always reload reviews after successful reply to ensure we see the updated data
+                console.log('🔄 Reloading reviews after successful reply to show updated status');
+                
                 try {
-                    // Update the review in place instead of reloading all reviews
+                    // Update the review in place for immediate feedback
                     updateReviewWithReply(reviewName, replyText);
                     
                     // Hide the manual reply section
                     const reviewId = reviewName.split('/').pop();
                     toggleManualReply(reviewId);
+                    
+                    // Wait a moment for Google API to process, then refresh
+                    setTimeout(() => {
+                        console.log('🔄 Refreshing reviews to show latest reply status');
+                        loadReviews();
+                    }, 1500);
                 } catch (domError) {
                     console.error('❌ Error updating DOM after successful reply:', domError);
                     console.log('🔄 Falling back to full review reload with delay');
