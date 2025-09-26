@@ -125,15 +125,119 @@ const AppState = {
     }
 };
 
+// Authentication check function
+async function checkAuthentication() {
+    console.log('🔐 Checking authentication...');
+    
+    // Check if we have an app token (Stripe-based auth)
+    const appToken = localStorage.getItem('appAuthToken');
+    if (appToken) {
+        try {
+            const response = await fetch('/app-auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token: appToken })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                console.log('✅ App authentication successful');
+                AppState.userData = result.user;
+                AppState.userLoaded = true;
+                return true;
+            }
+        } catch (error) {
+            console.error('App auth check failed:', error);
+        }
+    }
+    
+    // Check if we have Google OAuth (original system)
+    try {
+        const response = await fetch('/api/user');
+        const data = await response.json();
+        if (data.user) {
+            console.log('✅ Google OAuth authentication successful');
+            AppState.userData = data.user;
+            AppState.userLoaded = true;
+            return true;
+        }
+    } catch (error) {
+        console.log('Google OAuth not available:', error);
+    }
+    
+    // No valid authentication found
+    console.log('❌ No valid authentication found');
+    showAuthenticationRequired();
+    
+    // Redirect to login page after showing the message
+    setTimeout(() => {
+        window.location.href = '/';
+    }, 3000);
+    
+    return false;
+}
+
+function showAuthenticationRequired() {
+    const container = document.querySelector('.container');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <h1 style="color: #dc3545; margin-bottom: 20px;">Authentication Required</h1>
+                <p style="margin-bottom: 20px; font-size: 1.1rem;">Please log in to access the dashboard.</p>
+                <p style="color: #666; margin-bottom: 30px;">You will be redirected to the login page in <span id="countdown">3</span> seconds...</p>
+                <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #dc3545; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                <div style="margin-top: 20px;">
+                    <a href="/" class="google-btn" style="display: inline-block; margin: 10px; padding: 12px 24px; background: #4285f4; color: white; text-decoration: none; border-radius: 8px;">
+                        🔐 Go to Login Now
+                    </a>
+                    <a href="/pricing.html" class="google-btn" style="display: inline-block; margin: 10px; padding: 12px 24px; background: #28a745; color: white; text-decoration: none; border-radius: 8px;">
+                        💳 Subscribe & Login
+                    </a>
+                </div>
+            </div>
+        `;
+        
+        // Add countdown functionality
+        let countdown = 3;
+        const countdownElement = document.getElementById('countdown');
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdownElement) {
+                countdownElement.textContent = countdown;
+            }
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+    }
+}
+
 // DOM Content Loaded Event Listener
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Dashboard initializing...');
+    
+    // Check authentication before initializing
+    const isAuthenticated = await checkAuthentication();
+    
+    if (!isAuthenticated) {
+        console.log('❌ Authentication failed, stopping initialization');
+        return;
+    }
     
     // Set up event listeners for buttons
     setupEventListeners();
     
     // Smart initialization - load only essential data first
     loadUserInfo();
+    
+    // Ensure auth manager is updated after user info is loaded
+    setTimeout(() => {
+        if (window.authManager) {
+            window.authManager.updateAuthUI();
+        }
+    }, 1000);
     
     // Check if we should auto-navigate to reviews tab (from auth success page)
     if (window.location.hash === '#reviews') {
@@ -154,9 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Window focus event listener - recheck authentication
-window.addEventListener('focus', function() {
-    setTimeout(loadUserInfo, 500);
-});
+// Removed unnecessary focus event listener that was causing auth status changes
 
 // Setup all event listeners for buttons and elements
 function setupEventListeners() {
@@ -375,20 +477,6 @@ function setupEventListeners() {
 function updateOverviewStats() {
     console.log('📊 Updating overview statistics...');
     
-    // Update account information
-    if (AppState.userData && AppState.userData.user) {
-        const user = AppState.userData.user;
-        document.getElementById('user-name-display').textContent = user.displayName || 'Unknown';
-        document.getElementById('user-email-display').textContent = user.emails?.[0]?.value || 'No email';
-        document.getElementById('auth-status').textContent = '✅ Authenticated';
-        document.getElementById('auth-status').style.color = '#28a745';
-    } else {
-        document.getElementById('user-name-display').textContent = 'Not loaded';
-        document.getElementById('user-email-display').textContent = 'Not loaded';
-        document.getElementById('auth-status').textContent = '❌ Not authenticated';
-        document.getElementById('auth-status').style.color = '#dc3545';
-    }
-    
     // Update overview location selector
     updateOverviewLocationSelector();
 }
@@ -549,10 +637,107 @@ function loadUserInfo() {
     AppState.setLoading('User', true);
     
     // Show loading state
-    document.getElementById('user-name').textContent = 'Loading...';
-    document.getElementById('user-email').textContent = '';
+    const userNameElement = document.getElementById('user-name');
+    const userEmailElement = document.getElementById('user-email');
+    if (userNameElement) userNameElement.textContent = 'Loading...';
+    if (userEmailElement) userEmailElement.textContent = '';
     
-    fetch('/auth/profile')
+    // First try app authentication (Stripe-based)
+    const appToken = localStorage.getItem('appAuthToken');
+    if (appToken) {
+        console.log('🔍 Checking app authentication...');
+        fetch('/app-auth/verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ token: appToken })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.user) {
+                // Cache the user data
+                AppState.userData = data;
+                AppState.userLoaded = true;
+                
+                // Update UI
+                updateUserInfoUI(data);
+                
+                console.log('✅ App user loaded and cached:', data.user.email);
+                
+                // Update auth manager
+                if (window.authManager) {
+                    window.authManager.appUser = data.user;
+                    window.authManager.isAppAuthenticated = true;
+                    window.authManager.subscriptionStatus = data.user.subscription_status || 'premium';
+                    // Preserve existing Google authentication status
+                    window.authManager.updateAuthUI();
+                }
+                
+                // Auto-load locations if we're on the reviews tab or if locations haven't been loaded yet
+                if ((AppState.currentTab === 'reviews' || !AppState.locationsLoaded) && !AppState.isLoadingLocations) {
+                    console.log('👆 Auto-loading locations after user login...');
+                    setTimeout(() => loadBusinessLocations(), 100);
+                }
+                
+                // Update overview stats
+                updateOverviewStats();
+                return;
+            } else {
+                throw new Error('App authentication failed');
+            }
+        })
+        .catch(error => {
+            console.log('App auth failed, trying Google OAuth...', error);
+            // Fall back to Google OAuth
+            return fetchGoogleUserInfo();
+        })
+        .catch(error => {
+            console.error('❌ Error loading user info:', error);
+            AppState.clearCache(); // Clear cache on error
+            
+            // Handle different error types with better user experience
+            if (error.message.includes('401') || error.message.includes('403')) {
+                console.warn('⚠️ Authentication expired, redirecting to login');
+                handleAuthFailure('Authentication expired. Please log in again.');
+            } else if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                console.warn('⚠️ Network error, redirecting to login');
+                handleAuthFailure('Connection error. Please check your internet and try logging in again.');
+            } else {
+                console.warn('⚠️ Server error, redirecting to home');
+                handleAuthFailure('Server error occurred. Please try logging in again.');
+            }
+        })
+        .finally(() => {
+            AppState.setLoading('User', false);
+        });
+    } else {
+        // No app token, try Google OAuth
+        return fetchGoogleUserInfo()
+        .catch(error => {
+            console.error('❌ Error loading user info:', error);
+            AppState.clearCache(); // Clear cache on error
+            
+            // Handle different error types with better user experience
+            if (error.message.includes('401') || error.message.includes('403')) {
+                console.warn('⚠️ Authentication expired, redirecting to login');
+                handleAuthFailure('Authentication expired. Please log in again.');
+            } else if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                console.warn('⚠️ Network error, redirecting to login');
+                handleAuthFailure('Connection error. Please check your internet and try logging in again.');
+            } else {
+                console.warn('⚠️ Server error, redirecting to home');
+                handleAuthFailure('Server error occurred. Please try logging in again.');
+            }
+        })
+        .finally(() => {
+            AppState.setLoading('User', false);
+        });
+    }
+}
+
+function fetchGoogleUserInfo() {
+    return fetch('/auth/profile')
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -568,7 +753,15 @@ function loadUserInfo() {
                 // Update UI
                 updateUserInfoUI(data);
                 
-                console.log('✅ User loaded and cached:', data.user.displayName);
+                console.log('✅ Google user loaded and cached:', data.user.displayName);
+                
+                // Update auth manager
+                if (window.authManager) {
+                    window.authManager.googleUser = data.user;
+                    window.authManager.isGoogleAuthenticated = true;
+                    // Preserve existing app authentication status
+                    window.authManager.updateAuthUI();
+                }
                 
                 // Auto-load locations if we're on the reviews tab or if locations haven't been loaded yet
                 if ((AppState.currentTab === 'reviews' || !AppState.locationsLoaded) && !AppState.isLoadingLocations) {
@@ -580,13 +773,13 @@ function loadUserInfo() {
                 updateOverviewStats();
             } else {
                 // User not authenticated or missing data
-                console.warn('⚠️ User not authenticated, redirecting to home');
+                console.log('⚠️ User not authenticated, redirecting to home');
                 AppState.clearCache(); // Clear any stale cache
                 window.location.href = '/?message=login_required';
             }
         })
         .catch(error => {
-            console.error('❌ Error loading user info:', error);
+            console.error('❌ Error loading Google user info:', error);
             AppState.clearCache(); // Clear cache on error
             
             // Handle different error types with better user experience
@@ -623,7 +816,7 @@ function handleAuthFailure(message) {
                 <p style="color: #666; font-size: 0.9rem; margin-bottom: 20px;">You will be redirected to the login page...</p>
                 <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #dc3545; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
                 <div>
-                    <button onclick="window.location.href='/login.html'" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                    <button onclick="window.location.href='/'" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
                         Go to Login Now
                     </button>
                 </div>
@@ -636,7 +829,7 @@ function handleAuthFailure(message) {
     
     // Redirect after showing the message
     setTimeout(() => {
-        window.location.href = '/login.html';
+        window.location.href = '/';
     }, 3000);
 }
 
@@ -644,25 +837,52 @@ function updateUserInfoUI(userData) {
     // Check if elements exist before setting textContent
     const userNameElement = document.getElementById('user-name');
     const userEmailElement = document.getElementById('user-email');
-    const userNameDisplayElement = document.getElementById('user-name-display');
     
+    // Handle both app authentication and Google OAuth data structures
+    let displayName, email;
+    
+    if (userData.user) {
+        // App authentication structure: { success: true, user: { email, ... } }
+        if (userData.user.email) {
+            displayName = userData.user.email.split('@')[0]; // Use email prefix as name
+            email = userData.user.email;
+        }
+        // Google OAuth structure: { user: { displayName, emails: [...] } }
+        else if (userData.user.displayName) {
+            displayName = userData.user.displayName;
+            email = userData.user.emails?.[0]?.value || 'No email available';
+        }
+    }
+    
+    // Update user name element
     if (userNameElement) {
-        userNameElement.textContent = userData.user.displayName || 'User';
+        userNameElement.textContent = displayName || 'User';
     }
     
+    // Update user email element
     if (userEmailElement) {
-        userEmailElement.textContent = userData.user.emails?.[0]?.value || 'No email available';
+        userEmailElement.textContent = email || 'No email available';
     }
     
-    if (userNameDisplayElement) {
-        userNameDisplayElement.textContent = userData.user.displayName || 'User';
-    }
-    
-    // Update auth manager with Google user info
+    // Update auth manager with user info
     if (window.authManager) {
-        window.authManager.googleUser = userData.user;
-        window.authManager.isGoogleAuthenticated = true;
-        window.authManager.updateAuthUI();
+        if (userData.user && userData.user.displayName) {
+            // Google OAuth user
+            window.authManager.googleUser = userData.user;
+            window.authManager.isGoogleAuthenticated = true;
+            // Preserve existing app authentication status
+        } else if (userData.user && userData.user.email) {
+            // App authentication user
+            window.authManager.appUser = userData.user;
+            window.authManager.isAppAuthenticated = true;
+            window.authManager.subscriptionStatus = userData.user.subscription_status || 'premium';
+            // Preserve existing Google authentication status
+        }
+        
+        // Only update UI if we have valid user data
+        if (userData.user) {
+            window.authManager.updateAuthUI();
+        }
     }
 }
 
@@ -1457,7 +1677,21 @@ function displayReviews(reviewData, unansweredOnly, isAppending = false) {
 
 // Session Handling Functions
 function handleSessionExpired() {
-    console.log('🔐 Session expired, forcing logout...');
+    console.log('🔐 Session expired, checking authentication status...');
+    
+    // Check if user has app authentication but not Google OAuth
+    const appToken = localStorage.getItem('appAuthToken');
+    if (appToken) {
+        console.log('⚠️ App authenticated but Google OAuth required for reviews');
+        showError('Google Business Profile access required. Please complete Google authorization to view reviews.', 'Google Authorization Required');
+        
+        // Redirect to Google OAuth after a short delay
+        setTimeout(() => {
+            console.log('🔄 Redirecting to Google OAuth...');
+            window.location.href = '/auth/google';
+        }, 3000);
+        return;
+    }
     
     // Clear all app state
     AppState.clearCache();
@@ -1467,14 +1701,15 @@ function handleSessionExpired() {
     
     // Clear any stored tokens or user data
     localStorage.removeItem('user_session');
+    localStorage.removeItem('appAuthToken');
     
     // Show session expired message
     showError('Your session has expired. Please log in again to continue.', 'Session Expired');
     
-    // Redirect to login after a short delay
+    // Redirect to main login page after a short delay
     setTimeout(() => {
         console.log('🔄 Redirecting to login...');
-        window.location.href = '/auth/google';
+        window.location.href = '/';
     }, 2000);
 }
 
@@ -1488,7 +1723,8 @@ function isAuthenticationError(error) {
         error.message.includes('Invalid Credentials') ||
         error.message.includes('UNAUTHENTICATED') ||
         error.message.includes('authentication') ||
-        error.message.includes('Unauthorized')
+        error.message.includes('Unauthorized') ||
+        error.message.includes('Google access token not found')
     )) {
         return true;
     }
@@ -1496,6 +1732,7 @@ function isAuthenticationError(error) {
     if (error.error && (
         error.error === 'AUTHENTICATION_REQUIRED' ||
         error.error === 'UNAUTHORIZED' ||
+        error.error === 'ACCESS_TOKEN_NOT_FOUND' ||
         error.error.includes('auth')
     )) {
         return true;

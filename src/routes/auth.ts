@@ -49,7 +49,7 @@ if (clientID && clientSecret) {
   // OAuth callback with proper error handling
   router.get('/google/callback', 
     passport.authenticate('google', { 
-      failureRedirect: '/?error=auth_failed',
+      failureRedirect: '/?error=google_auth_failed',
       failureMessage: true 
     }),
     (req, res) => {

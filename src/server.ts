@@ -25,6 +25,7 @@ import gmbRoutes from './routes/gmb';
 import reviewsRoutes from './routes/reviews';
 import openaiRoutes from './routes/openai';
 import deepseekRoutes from './routes/deepseek';
+import stripeRoutes from './routes/stripe';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,17 +36,22 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://api.stripe.com"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      frameSrc: ["'self'", "https://js.stripe.com"],
     },
   },
 }));
 app.use(cors());
+
+// Stripe webhook route must come BEFORE express.json() middleware
+app.use('/api/stripe', stripeRoutes);
+
 app.use(express.json());
 
 // Serve static files from public directory
@@ -106,6 +112,13 @@ app.get('/auth-success', (req, res) => {
   const path = require('path');
   const authSuccessPath = path.join(__dirname, '../public/auth-success.html');
   res.sendFile(authSuccessPath);
+});
+
+// Set password route - serve set-password.html
+app.get('/set-password', (req, res) => {
+  const path = require('path');
+  const setPasswordPath = path.join(__dirname, '../public/set-password.html');
+  res.sendFile(setPasswordPath);
 });
 
 // Health check endpoint

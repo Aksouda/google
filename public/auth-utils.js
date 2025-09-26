@@ -14,7 +14,8 @@ class AuthManager {
     // App Authentication Methods
     async checkAppAuth() {
         if (!this.appToken) {
-            this.isAppAuthenticated = false;
+            // Don't set isAppAuthenticated to false if we don't have a token
+            // Let the dashboard handle the initial authentication check
             return false;
         }
 
@@ -55,12 +56,14 @@ class AuthManager {
                 this.isGoogleAuthenticated = true;
                 return true;
             } else {
-                this.isGoogleAuthenticated = false;
+                // Don't set isGoogleAuthenticated to false if the check fails
+                // Let the dashboard handle the initial authentication check
                 return false;
             }
         } catch (error) {
             console.error('Google auth check error:', error);
-            this.isGoogleAuthenticated = false;
+            // Don't set isGoogleAuthenticated to false if there's an error
+            // Let the dashboard handle the initial authentication check
             return false;
         }
     }
@@ -125,7 +128,7 @@ class AuthManager {
         ]);
         
         // Redirect to login page
-        window.location.href = '/login.html';
+        window.location.href = '/';
     }
 
     // Update Google Business connection status in backend
@@ -216,7 +219,7 @@ class AuthManager {
                 authStatus.innerHTML = `
                     <div class="auth-error">
                         <span class="status-icon">❌</span>
-                        <span>Not Connected - <a href="/login.html">Login</a></span>
+                        <span>Not Connected - <a href="/">Login</a></span>
                     </div>
                 `;
             }
@@ -307,7 +310,7 @@ class AuthManager {
                 throw new Error('Subscription required');
             } else {
                 // Redirect to login
-                window.location.href = '/login.html';
+                window.location.href = '/';
                 throw new Error('Authentication required');
             }
         }
@@ -329,14 +332,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     authManager.updateAuthUI();
     
     // Redirect to login if not authenticated (except on login page)
-    if (!window.location.pathname.includes('login.html') && !authStatus.app) {
-        console.log('❌ Not authenticated, redirecting to login...');
-        window.location.href = '/login.html';
+        if (!window.location.pathname.includes('index.html') && !authStatus.app) {
+        console.log('Redirecting to login...');
+        window.location.href = '/';
         return;
     }
     
     // Show warning if only partially authenticated
-    if (authStatus.app && !authStatus.google && !window.location.pathname.includes('login.html')) {
+    if (authStatus.app && !authStatus.google && !window.location.pathname.includes('index.html')) {
         console.log('⚠️ Partial authentication - Google Business not connected');
         // Could show a banner or notification here
     }

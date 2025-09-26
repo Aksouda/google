@@ -118,15 +118,31 @@
         
         <div class="auth-section">
             <div id="login-section">
-                <a href="/login.html" class="google-btn">
-                    🚀 Get Started
-                </a>
+                <!-- Unified Login Form -->
+                <form id="login-form" style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;">
+                    <h3 style="margin-bottom: 15px; color: #333;">Login to Google Reviews Manager</h3>
+                    
+                    <input type="email" id="email" placeholder="Your email" required style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                    <input type="password" id="password" placeholder="Your password" required style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                    
+                    <button type="submit" class="google-btn" style="background: #28a745;">
+                        🔐 Login & Authorize Google
+                    </button>
+                </form>
+                
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="/pricing.html" style="color: #007bff; text-decoration: none; font-size: 0.9rem;">
+                        Don't have an account? Get started here
+                    </a>
+                </div>
+                
                 <div style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; font-size: 0.9rem; color: #1565c0;">
-                    <strong>🎯 How it works:</strong><br>
-                    • Create your account to manage app access<br>
-                    • <strong>Authorize Google Business Profile access</strong><br>
-                    • <strong>Manage reviews and automate responses</strong><br>
-                    • <strong>Monitor multiple business locations</strong>
+                    <strong>🎯 Important Instructions:</strong><br>
+                    • Enter your email and password above<br>
+                    • After login, you'll be redirected to Google OAuth<br>
+                    • <strong>Choose the Google account that manages your Google Business Profile</strong><br>
+                    • This account must have admin access to your business listings<br>
+                    • Once authorized, you can manage reviews and automate responses
                 </div>
             </div>
             
@@ -157,6 +173,14 @@
         });
         
         function checkAuthStatus() {
+            // Check for app authentication token (Stripe users)
+            const appToken = localStorage.getItem('appAuthToken');
+            if (appToken) {
+                // User is logged in with app token, redirect to dashboard
+                window.location.href = '/dashboard.html';
+                return;
+            }
+            
             fetch('/api/user')
                 .then(response => response.json())
                 .then(data => {
@@ -186,8 +210,48 @@
         }
         
         function logout() {
+            // Clear app token if it exists
+            localStorage.removeItem('appAuthToken');
             window.location.href = '/auth/logout';
         }
+        
+        // Handle unified login form
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/app-auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store the app authentication token
+                    localStorage.setItem('appAuthToken', data.token);
+                    
+                    // Show success message and redirect to Google OAuth
+                    showMessage('✓ Login successful! Redirecting to Google authorization...', 'success');
+                    
+                    // Redirect to Google OAuth after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/auth/google';
+                    }, 2000);
+                } else {
+                    showMessage(data.message || 'Login failed', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('Login failed. Please try again.', 'error');
+            }
+        });
         
         function loadReviews() {
             document.getElementById('reviews-container').innerHTML = 
@@ -207,12 +271,16 @@
             
             if (error === 'auth_failed') {
                 showMessage('Authentication failed. Please try again.', 'error');
+            } else if (error === 'google_auth_failed') {
+                showMessage('Google authorization failed. Please try logging in again and make sure to select the correct Google account that manages your business profile.', 'error');
             } else if (message === 'login_required') {
                 showMessage('Please log in to access the dashboard.', 'info');
             } else if (message === 'auth_expired') {
                 showMessage('Your session has expired. Please log in again.', 'warning');
             } else if (message === 'error') {
                 showMessage('An error occurred. Please try logging in again.', 'error');
+            } else if (message === 'password_set') {
+                showMessage('✓ Password set successfully! Please log in to continue.', 'success');
             }
             
             // Clean up the URL

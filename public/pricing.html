@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - Google Reviews Manager</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .pricing-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .pricing-card.popular {
+            border-color: #4285f4;
+            transform: scale(1.05);
+        }
+        
+        .pricing-card.popular::before {
+            content: 'Most Popular';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4285f4;
+            color: white;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .plan-price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4285f4;
+            margin-bottom: 5px;
+        }
+        
+        .plan-period {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .plan-features {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+        
+        .plan-features li {
+            padding: 8px 0;
+            color: #555;
+            position: relative;
+        }
+        
+        .plan-features li::before {
+            content: '✓';
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .plan-button {
+            width: 100%;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #4285f4;
+            color: white;
+        }
+        
+        .plan-button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .plan-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .back-link a {
+            color: #4285f4;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Choose Your Plan</h1>
+            <p>Select the perfect plan for your business needs</p>
+        </div>
+        
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+        
+        <div class="pricing-grid">
+            <!-- Monthly Plan -->
+            <div class="pricing-card">
+                <div class="plan-name">Monthly</div>
+                <div class="plan-price">$14.99</div>
+                <div class="plan-period">per month</div>
+                <ul class="plan-features">
+                    <li>Unlimited reviews</li>
+                    <li>Advanced review monitoring</li>
+                    <li>AI-powered response suggestions</li>
+                    <li>Up to 5 Google Business locations</li>
+                    <li>Advanced analytics & insights</li>
+                    <li>Custom response templates</li>
+                    <li>Email & SMS notifications</li>
+                    <li>Priority email support</li>
+                </ul>
+                <button class="plan-button" data-plan="monthly">
+                    Get Started
+                </button>
+            </div>
+            
+            <!-- Yearly Plan -->
+            <div class="pricing-card popular">
+                <div class="plan-name">Yearly</div>
+                <div class="plan-price">$119.99</div>
+                <div class="plan-period">per year (Save 33%)</div>
+                <ul class="plan-features">
+                    <li>Everything in Monthly</li>
+                    <li>33% savings</li>
+                    <li>Priority support</li>
+                    <li>Early access to new features</li>
+                </ul>
+                <button class="plan-button" data-plan="yearly">
+                    Get Started
+                </button>
+            </div>
+        </div>
+        
+        <div class="back-link">
+            <a href="/">← Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Stripe
+        const stripe = Stripe('pk_test_51S25fYRVVYJOSanM9j97wUN2sSATdouk1MaVRJik3XUZLnyfZlTMoTo9RPTJ3QeIMDy3TWJa5Za0cKE3d7D7x9SS00FRJIRnQi'); // Replace with your actual Stripe publishable key
+        
+        // Add event listeners for plan buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const planButtons = document.querySelectorAll('.plan-button');
+            planButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const plan = this.getAttribute('data-plan');
+                    selectPlan(plan);
+                });
+            });
+        });
+        
+        // Check for URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const cancelled = urlParams.get('cancelled');
+        const error = urlParams.get('error');
+        
+        if (cancelled === 'true') {
+            showMessage('Payment was cancelled. You can try again anytime.', 'error');
+        }
+        
+        if (error) {
+            showMessage('An error occurred. Please try again.', 'error');
+        }
+        
+        function showMessage(message, type) {
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            
+            if (type === 'error') {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+            } else {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                errorDiv.style.display = 'none';
+            }
+        }
+        
+        async function selectPlan(plan) {
+            
+            try {
+                // Show loading state
+                const buttons = document.querySelectorAll('.plan-button');
+                buttons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.textContent = 'Processing...';
+                });
+                
+                document.body.classList.add('loading');
+                
+                const response = await fetch('/api/stripe/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        plan: plan
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to create checkout session');
+                }
+                
+                // Redirect to Stripe checkout
+                const { error } = await stripe.redirectToCheckout({
+                    sessionId: data.sessionId
+                });
+                
+                if (error) {
+                    throw new Error(error.message);
+                }
+                
+            } catch (error) {
+                console.error('Checkout error:', error);
+                showMessage(error.message || 'Failed to start checkout process. Please try again.', 'error');
+                
+                // Reset button states
+                const buttons = document.querySelectorAll('.plan-button');
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.textContent = 'Get Started';
+                });
+                
+                document.body.classList.remove('loading');
+            }
+        }
+    </script>
+</body>
+</html>

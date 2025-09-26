@@ -376,6 +376,12 @@
                         container.querySelectorAll('.location-card').forEach(card => {
                             card.addEventListener('click', () => selectLocation(card));
                         });
+                        
+                        // Update the locations status when loading from cache
+                        const cardCount = container.querySelectorAll('.location-card').length;
+                        document.getElementById('locations-status').textContent = 
+                            `${cardCount} business location${cardCount !== 1 ? 's' : ''} found (cached)`;
+                        
                         console.log('🗄️ Loaded location cards from cache (pre-fetch). Skipping API calls.');
                         return;
                     }
@@ -540,6 +546,12 @@
                 container.innerHTML = cached;
                 document.getElementById('location-selection-section').classList.add('active');
                 showContinueButton();
+                
+                // Update the locations status when loading from cache
+                const cardCount = container.querySelectorAll('.location-card').length;
+                document.getElementById('locations-status').textContent = 
+                    `${cardCount} business location${cardCount !== 1 ? 's' : ''} found (cached)`;
+                
                 console.log('🗄️ Loaded location cards from cache');
                 // Re-bind click handlers for cached cards
                 container.querySelectorAll('.location-card').forEach(card => {
@@ -556,6 +568,7 @@
                         <p>Set up your Google Business Profile first to continue.</p>
                     </div>
                 `;
+                document.getElementById('locations-status').textContent = 'No business locations found';
                 showContinueButton();
                 return;
             }

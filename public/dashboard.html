@@ -27,6 +27,11 @@
             margin: 0 auto;
         }
         
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .header {
             display: flex;
             justify-content: space-between;
@@ -493,29 +498,6 @@
         <div id="overview" class="tab-content active">
             <h2 style="margin-bottom: 20px;">Account Overview</h2>
             
-            <!-- Account Info Section -->
-            <div style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #bbdefb;">
-                <h3 style="margin-bottom: 20px; color: #1565c0; display: flex; align-items: center; gap: 10px;">
-                    <span>👤</span> Account Information
-                </h3>
-                <div id="account-info" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 2.5rem; color: #1565c0; margin-bottom: 5px;">👤</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 5px;" id="user-name-display">Loading...</div>
-                        <div style="color: #666; font-size: 0.9rem;">Account Name</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 2.5rem; color: #1565c0; margin-bottom: 5px;">📧</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 5px;" id="user-email-display">Loading...</div>
-                        <div style="color: #666; font-size: 0.9rem;">Email Address</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 2.5rem; color: #1565c0; margin-bottom: 5px;">🔑</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 5px;" id="auth-status">Checking...</div>
-                        <div style="color: #666; font-size: 0.9rem;">Authentication Status</div>
-                    </div>
-                </div>
-            </div>
             
             <!-- Location Selection -->
             <div style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #bbdefb;">
