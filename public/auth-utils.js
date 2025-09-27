@@ -243,6 +243,11 @@ class AuthManager {
                     <div class="google-status ${subInfo.hasGoogleBusiness ? 'connected' : 'disconnected'}">
                         Google Business: ${subInfo.hasGoogleBusiness ? 'Connected' : 'Not Connected'}
                     </div>
+                    <div class="subscription-actions" style="margin-top: 8px;">
+                        <a href="/subscription.html" style="color: #4285f4; text-decoration: none; font-size: 0.8rem; font-weight: 500;">
+                            Manage Subscription →
+                        </a>
+                    </div>
                 </div>
             `;
         }

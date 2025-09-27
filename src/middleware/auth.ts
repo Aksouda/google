@@ -39,7 +39,7 @@ export interface AuthMiddlewareOptions {
  */
 export function requireAuth(options: AuthMiddlewareOptions = {}) {
   const {
-    redirectUrl = '/login',
+    redirectUrl = '/',
     returnJson = true,
     requireAccessToken = false
   } = options;

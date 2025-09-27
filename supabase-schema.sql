@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS app_users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
     -- Subscription fields
-    subscription_status VARCHAR(20) DEFAULT 'free' CHECK (subscription_status IN ('free', 'premium', 'enterprise')),
+    subscription_status VARCHAR(20) DEFAULT 'active' CHECK (subscription_status IN ('active', 'cancelling', 'cancelled')),
     subscription_expires_at TIMESTAMP WITH TIME ZONE,
     subscription_created_at TIMESTAMP WITH TIME ZONE,
     stripe_customer_id VARCHAR(255),

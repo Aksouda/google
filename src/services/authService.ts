@@ -6,8 +6,12 @@ export interface AppUser {
   id: string;
   email: string;
   created_at: string;
-  subscription_status: 'free' | 'premium' | 'enterprise';
+  subscription_status: 'active' | 'cancelling' | 'cancelled';
   subscription_expires_at?: string;
+  subscription_created_at?: string;
+  subscription_plan?: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
   google_business_connected: boolean;
 }
 
@@ -246,7 +250,7 @@ export async function updateGoogleBusinessConnection(userId: string, connected: 
  */
 export async function updateSubscriptionStatus(
   userId: string, 
-  status: 'free' | 'premium' | 'enterprise',
+  status: 'active' | 'cancelling' | 'cancelled',
   expiresAt?: string
 ): Promise<boolean> {
   try {
@@ -273,21 +277,73 @@ export async function updateSubscriptionStatus(
 export async function hasActiveSubscription(userId: string): Promise<boolean> {
   try {
     const user = await getUserById(userId);
-    if (!user) return false;
+    if (!user) {
+      console.log('❌ User not found for subscription check:', userId);
+      return false;
+    }
 
-    if (user.subscription_status === 'free') return false;
+    console.log(`🔍 Checking subscription for ${user.email}:`, {
+      status: user.subscription_status,
+      expires_at: user.subscription_expires_at,
+      created_at: user.subscription_created_at
+    });
+
+    if (user.subscription_status === 'cancelled') {
+      console.log(`❌ User has ${user.subscription_status} subscription`);
+      return false;
+    }
+
+    // For cancelling subscriptions, check if they're still within the access period
+    if (user.subscription_status === 'cancelling') {
+      if (user.subscription_expires_at) {
+        const expiresAt = new Date(user.subscription_expires_at);
+        const now = new Date();
+        const isActive = expiresAt > now;
+        
+        console.log(`📅 Cancelling subscription expires at: ${expiresAt.toISOString()}, now: ${now.toISOString()}, active: ${isActive}`);
+        
+        if (!isActive) {
+          console.log('❌ Cancelling subscription has expired');
+          // Update user status to cancelled if expired
+          await supabaseAdmin
+            .from('app_users')
+            .update({ subscription_status: 'cancelled' })
+            .eq('id', userId);
+          return false;
+        }
+        
+        return true; // Still within access period
+      } else {
+        console.log('⚠️ Cancelling subscription has no expiration date, assuming active');
+        return true;
+      }
+    }
 
     // Check if subscription has expired
     if (user.subscription_expires_at) {
       const expiresAt = new Date(user.subscription_expires_at);
       const now = new Date();
-      return expiresAt > now;
+      const isActive = expiresAt > now;
+      
+      console.log(`📅 Subscription expires at: ${expiresAt.toISOString()}, now: ${now.toISOString()}, active: ${isActive}`);
+      
+      if (!isActive) {
+        console.log('❌ Subscription has expired');
+        // Update user status to cancelled if expired
+        await supabaseAdmin
+          .from('app_users')
+          .update({ subscription_status: 'cancelled' })
+          .eq('id', userId);
+      }
+      
+      return isActive;
     }
 
-    // If no expiration date, assume active
+    // If no expiration date but has premium status, assume active
+    console.log('⚠️ No expiration date found, assuming active based on status');
     return true;
   } catch (error) {
-    console.error('Check subscription error:', error);
+    console.error('❌ Check subscription error:', error);
     return false;
   }
 }

@@ -264,7 +264,7 @@ router.post('/update-subscription', requireAppAuth, async (req, res) => {
  * Test subscription-protected route
  * GET /app-auth/premium-test
  */
-router.get('/premium-test', requireAppAuth, requireSubscription(['premium', 'enterprise']), (req, res) => {
+router.get('/premium-test', requireAppAuth, requireSubscription(['active', 'cancelling']), (req, res) => {
   res.json({
     success: true,
     message: 'You have access to premium features!',

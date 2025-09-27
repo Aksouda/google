@@ -67,7 +67,7 @@ export function requireAppAuth(req: AppAuthenticatedRequest, res: Response, next
 /**
  * Middleware to require active subscription
  */
-export function requireSubscription(allowedPlans: ('free' | 'premium' | 'enterprise')[] = ['premium', 'enterprise']) {
+export function requireSubscription(allowedPlans: ('active' | 'cancelling' | 'cancelled')[] = ['active', 'cancelling']) {
   return async (req: AppAuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.appUser) {
       return res.status(401).json({
@@ -90,8 +90,8 @@ export function requireSubscription(allowedPlans: ('free' | 'premium' | 'enterpr
       });
     }
 
-    // For paid plans, check if subscription is still active
-    if (user.subscription_status !== 'free') {
+    // For active and cancelling plans, check if subscription is still active
+    if (user.subscription_status === 'active' || user.subscription_status === 'cancelling') {
       const hasActive = await hasActiveSubscription(user.id);
       if (!hasActive) {
         return res.status(403).json({

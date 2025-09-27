@@ -93,11 +93,9 @@ app.get('/dashboard', (req, res) => {
   });
 });
 
-// Login route - serve login.html
+// Login route - redirect to main page (index.html)
 app.get('/login', (req, res) => {
-  const path = require('path');
-  const loginPath = path.join(__dirname, '../public/login.html');
-  res.sendFile(loginPath);
+  res.redirect('/');
 });
 
 // Subscription route - serve subscription.html
@@ -119,6 +117,13 @@ app.get('/set-password', (req, res) => {
   const path = require('path');
   const setPasswordPath = path.join(__dirname, '../public/set-password.html');
   res.sendFile(setPasswordPath);
+});
+
+// Pricing route - serve pricing.html
+app.get('/pricing', (req, res) => {
+  const path = require('path');
+  const pricingPath = path.join(__dirname, '../public/pricing.html');
+  res.sendFile(pricingPath);
 });
 
 // Health check endpoint
