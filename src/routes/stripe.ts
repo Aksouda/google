@@ -195,7 +195,7 @@ router.get('/subscription', requireAppAuth, async (req, res) => {
     let subscription;
     try {
       subscription = await stripe.subscriptions.retrieve(user.stripe_subscription_id, {
-        expand: ['latest_invoice', 'schedule']
+        expand: ['latest_invoice', 'schedule', 'items.data']
       });
       console.log('📊 Raw Stripe subscription data:', JSON.stringify(subscription, null, 2));
     } catch (stripeError: any) {
@@ -229,27 +229,52 @@ router.get('/subscription', requireAppAuth, async (req, res) => {
     // Try to get the end date from multiple sources
     let endDate = null;
     
-    // First try current_period_end
-    if ((subscription as any).current_period_end) {
-      endDate = safeToISOString((subscription as any).current_period_end);
-    }
-    
-    // If that's null, try to get it from the schedule
-    if (!endDate && (subscription as any).schedule) {
-      console.log('📅 Trying to get end date from schedule:', (subscription as any).schedule);
-      // Schedule might have the end date
-    }
-    
-    // If still null, try to get it from the latest invoice
-    if (!endDate && (subscription as any).latest_invoice) {
-      console.log('📅 Trying to get end date from latest invoice:', (subscription as any).latest_invoice);
-      const latestInvoice = (subscription as any).latest_invoice;
-      if (latestInvoice && typeof latestInvoice === 'object' && latestInvoice.period_end) {
-        endDate = safeToISOString(latestInvoice.period_end);
+    // For cancel_at_period_end subscriptions, use current_period_end (when access ends)
+    if (subscription.cancel_at_period_end) {
+      // First try subscription items current_period_end
+      if ((subscription as any).items && (subscription as any).items.data && (subscription as any).items.data.length > 0) {
+        const firstItem = (subscription as any).items.data[0];
+        if (firstItem.current_period_end) {
+          endDate = safeToISOString(firstItem.current_period_end);
+          console.log('📅 Got access end date from subscription item current_period_end:', endDate);
+        }
+      }
+      
+      // Fallback to subscription current_period_end
+      if (!endDate && (subscription as any).current_period_end) {
+        endDate = safeToISOString((subscription as any).current_period_end);
+        console.log('📅 Got access end date from subscription current_period_end:', endDate);
+      }
+    } else {
+      // For regular subscriptions, use current_period_end for next billing
+      // First try subscription items current_period_end
+      if ((subscription as any).items && (subscription as any).items.data && (subscription as any).items.data.length > 0) {
+        const firstItem = (subscription as any).items.data[0];
+        if (firstItem.current_period_end) {
+          endDate = safeToISOString(firstItem.current_period_end);
+          console.log('📅 Got next billing date from subscription item current_period_end:', endDate);
+        }
+      }
+      
+      // Fallback to subscription current_period_end
+      if (!endDate && (subscription as any).current_period_end) {
+        endDate = safeToISOString((subscription as any).current_period_end);
+        console.log('📅 Got next billing date from subscription current_period_end:', endDate);
       }
     }
     
     console.log('📅 Final end date determined:', endDate);
+
+    // Get the actual plan from Stripe subscription items
+    let actualPlan = user.subscription_plan; // fallback to database value
+    if ((subscription as any).items && (subscription as any).items.data && (subscription as any).items.data.length > 0) {
+      const firstItem = (subscription as any).items.data[0];
+      if (firstItem.price && firstItem.price.recurring) {
+        const interval = firstItem.price.recurring.interval;
+        actualPlan = interval; // 'month' or 'year'
+        console.log('📊 Got plan from Stripe subscription item:', actualPlan);
+      }
+    }
 
     res.json({
       success: true,
@@ -257,10 +282,10 @@ router.get('/subscription', requireAppAuth, async (req, res) => {
         id: subscription.id,
         status: subscription.status,
         current_period_start: safeToISOString((subscription as any).current_period_start),
-        current_period_end: safeToISOString((subscription as any).current_period_end),
+        current_period_end: endDate, // Use the calculated endDate (from subscription items)
         cancel_at_period_end: subscription.cancel_at_period_end,
         canceled_at: safeToISOString(subscription.canceled_at),
-        plan: user.subscription_plan,
+        plan: actualPlan,
         customer_id: user.stripe_customer_id,
         end_date: endDate
       }
@@ -528,6 +553,7 @@ router.post('/sync-subscription', requireAppAuth, async (req, res) => {
 router.post('/create-portal-session', requireAppAuth, async (req, res) => {
   try {
     const userId = (req as any).appUserId;
+    console.log('🔍 Creating portal session for user ID:', userId);
     
     // Get user from database
     const { data: user, error: userError } = await supabase
@@ -537,6 +563,7 @@ router.post('/create-portal-session', requireAppAuth, async (req, res) => {
       .single();
 
     if (userError || !user) {
+      console.error('❌ User not found:', userError);
       return res.status(404).json({ 
         success: false, 
         error: 'USER_NOT_FOUND', 
@@ -544,13 +571,23 @@ router.post('/create-portal-session', requireAppAuth, async (req, res) => {
       });
     }
 
+    console.log('👤 User found:', { 
+      id: user.id, 
+      email: user.email, 
+      stripe_customer_id: user.stripe_customer_id 
+    });
+
     if (!user.stripe_customer_id) {
+      console.error('❌ No Stripe customer ID found for user:', user.email);
       return res.status(400).json({ 
         success: false, 
         error: 'NO_CUSTOMER', 
         message: 'No Stripe customer found' 
       });
     }
+
+    console.log('🔧 Creating Stripe portal session for customer:', user.stripe_customer_id);
+    console.log('🔧 Return URL:', `${process.env.FRONTEND_URL}/subscription.html`);
 
     // Create portal session
     try {
@@ -559,12 +596,18 @@ router.post('/create-portal-session', requireAppAuth, async (req, res) => {
         return_url: `${process.env.FRONTEND_URL}/subscription.html`,
       });
 
+      console.log('✅ Portal session created successfully:', portalSession.id);
       res.json({
         success: true,
         url: portalSession.url
       });
     } catch (portalError: any) {
-      console.error('Stripe Customer Portal error:', portalError);
+      console.error('❌ Stripe Customer Portal error:', {
+        code: portalError.code,
+        type: portalError.type,
+        message: portalError.message,
+        statusCode: portalError.statusCode
+      });
       
       // If Customer Portal is not configured, provide fallback message
       if (portalError.code === 'billing_portal_configuration_inactive') {
@@ -577,8 +620,14 @@ router.post('/create-portal-session', requireAppAuth, async (req, res) => {
       
       throw portalError;
     }
-  } catch (error) {
-    console.error('Create portal session error:', error);
+  } catch (error: any) {
+    console.error('❌ Create portal session error:', {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+      statusCode: error.statusCode,
+      stack: error.stack
+    });
     res.status(500).json({ 
       success: false, 
       error: 'PORTAL_ERROR', 
@@ -815,25 +864,28 @@ async function handleSubscriptionUpdated(subscription: any) {
     // Get the cancellation date (when the subscription will actually end)
     let endDate = null;
     
-    // First try cancel_at (this is the scheduled cancellation date)
-    if ((subscription as any).cancel_at) {
-      endDate = safeToISOString((subscription as any).cancel_at);
-      console.log('📅 Got end date from cancel_at:', endDate);
-    }
-    
-    // Fallback to subscription items current_period_end
-    if (!endDate && (subscription as any).items && (subscription as any).items.data && (subscription as any).items.data.length > 0) {
-      const firstItem = (subscription as any).items.data[0];
-      if (firstItem.current_period_end) {
-        endDate = safeToISOString(firstItem.current_period_end);
-        console.log('📅 Got end date from subscription item:', endDate);
+    // For cancel_at_period_end subscriptions, use current_period_end (when access ends)
+    if (subscription.cancel_at_period_end) {
+      // First try subscription items current_period_end
+      if ((subscription as any).items && (subscription as any).items.data && (subscription as any).items.data.length > 0) {
+        const firstItem = (subscription as any).items.data[0];
+        if (firstItem.current_period_end) {
+          endDate = safeToISOString(firstItem.current_period_end);
+          console.log('📅 Got access end date from subscription item current_period_end:', endDate);
+        }
       }
-    }
-    
-    // Last fallback to subscription current_period_end
-    if (!endDate && (subscription as any).current_period_end) {
-      endDate = safeToISOString((subscription as any).current_period_end);
-      console.log('📅 Got end date from subscription current_period_end:', endDate);
+      
+      // Fallback to subscription current_period_end
+      if (!endDate && (subscription as any).current_period_end) {
+        endDate = safeToISOString((subscription as any).current_period_end);
+        console.log('📅 Got access end date from subscription current_period_end:', endDate);
+      }
+    } else {
+      // For regular subscriptions, use cancel_at if it exists
+      if ((subscription as any).cancel_at) {
+        endDate = safeToISOString((subscription as any).cancel_at);
+        console.log('📅 Got end date from cancel_at:', endDate);
+      }
     }
     
     console.log('📅 Webhook: Final end date determined:', endDate);

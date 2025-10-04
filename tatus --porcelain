@@ -1,0 +1,5 @@
+[33m154d59b[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix subscription cancellation and status management
+[33m52eea0d[m Fix authentication issues and clean up UI
+[33m6b9ad16[m UI: cache cards via localStorage; CSP-safe handlers; reviews: primary button uses refreshReviews; show selected location label; fix pagination bootstrap; stop auto-reload after reply
+[33m6618844[m Use BI storefrontAddress only for addresses; format into formattedAddress; simplify resolve-addresses to fetchLocationDetails with concurrency; add BI debug logs; keep reviews API untouched
+[33m16478a7[m Update Google My Business service and dashboard functionality

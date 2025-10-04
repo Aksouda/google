@@ -298,17 +298,6 @@
             </div>
         </div>
         
-        <div id="billing-options" style="display: none;">
-            <h3 style="margin-bottom: 20px; text-align: center;">Billing Options</h3>
-            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 30px;">
-                <button id="monthly-btn" class="billing-option active" data-plan="monthly">
-                    Monthly Billing
-                </button>
-                <button id="yearly-btn" class="billing-option" data-plan="yearly">
-                    Yearly Billing (Save 20%)
-                </button>
-            </div>
-        </div>
         
         <div class="back-link">
             <a href="/dashboard">← Back to Dashboard</a>
@@ -405,15 +394,32 @@
             
             if (subscriptionData) {
                 if (subscriptionData.plan) {
-                    details += `<br>Plan: ${subscriptionData.plan.toUpperCase()}`;
+                    const planDisplay = subscriptionData.plan === 'year' ? 'Yearly' : 
+                                      subscriptionData.plan === 'month' ? 'Monthly' : 
+                                      subscriptionData.plan.toUpperCase();
+                    details += `<br>Plan: ${planDisplay}`;
                 }
-                if (subscriptionData.current_period_end) {
-                    const endDate = new Date(subscriptionData.current_period_end).toLocaleDateString();
-                    if (subscriptionData.cancel_at_period_end) {
-                        details += `<br><strong style="color: #dc3545;">Access ends: ${endDate}</strong>`;
-                    } else {
-                        details += `<br>Next billing: ${endDate}`;
-                    }
+                
+                // Show cancellation or billing status
+                console.log('🔍 Subscription data for status display:', {
+                    cancel_at_period_end: subscriptionData.cancel_at_period_end,
+                    current_period_end: subscriptionData.current_period_end,
+                    end_date: subscriptionData.end_date,
+                    status: subscriptionData.status
+                });
+                
+                if (subscriptionData.cancel_at_period_end) {
+                    // Use end_date (which contains the current_period_end from Stripe)
+                    const cancelDate = subscriptionData.end_date 
+                        ? new Date(subscriptionData.end_date).toLocaleDateString()
+                        : (subscriptionData.current_period_end ? new Date(subscriptionData.current_period_end).toLocaleDateString() : 'Unknown date');
+                    details += `<br><strong style="color: #dc3545;">Your subscription will be cancelled on ${cancelDate}</strong>`;
+                } else if (subscriptionData.current_period_end) {
+                    const nextBillingDate = new Date(subscriptionData.current_period_end).toLocaleDateString();
+                    details += `<br><strong style="color: #28a745;">Your subscription renews on ${nextBillingDate}</strong>`;
+                } else {
+                    // Fallback if no current_period_end is available
+                    details += `<br><strong style="color: #666;">Next billing: Contact support</strong>`;
                 }
             } else if (currentUser.subscription_expires_at) {
                 const expiresDate = new Date(currentUser.subscription_expires_at).toLocaleDateString();
@@ -434,21 +440,17 @@
             const manageBtn = document.getElementById('manage-subscription-btn');
             const cancelBtn = document.getElementById('cancel-subscription-btn');
             const reactivateBtn = document.getElementById('reactivate-subscription-btn');
-            const billingOptions = document.getElementById('billing-options');
             
             // Hide all buttons first
             manageBtn.style.display = 'none';
             cancelBtn.style.display = 'none';
             reactivateBtn.style.display = 'none';
-            billingOptions.style.display = 'none';
             
             if (subscriptionData) {
                 if (subscriptionData.status === 'active' && !subscriptionData.cancel_at_period_end) {
                     // Active subscription - show manage and cancel buttons
                     manageBtn.style.display = 'inline-block';
                     cancelBtn.style.display = 'inline-block';
-                    billingOptions.style.display = 'block';
-                    updateBillingOptions();
                 } else if (subscriptionData.cancel_at_period_end) {
                     // Cancelling - show manage button only
                     manageBtn.style.display = 'inline-block';
@@ -460,27 +462,9 @@
                 // Fallback for users without Stripe subscription data
                 manageBtn.style.display = 'inline-block';
                 cancelBtn.style.display = 'inline-block';
-                billingOptions.style.display = 'block';
-                updateBillingOptions();
             }
         }
 
-        function updateBillingOptions() {
-            if (!subscriptionData) return;
-            
-            const monthlyBtn = document.getElementById('monthly-btn');
-            const yearlyBtn = document.getElementById('yearly-btn');
-            
-            // Set active state based on current plan
-            if (subscriptionData.plan === 'monthly') {
-                monthlyBtn.classList.add('active');
-                yearlyBtn.classList.remove('active');
-            } else if (subscriptionData.plan === 'yearly') {
-                yearlyBtn.classList.add('active');
-                monthlyBtn.classList.remove('active');
-            }
-        }
-        
         function setupEventListeners() {
             // Manage subscription button
             document.getElementById('manage-subscription-btn').addEventListener('click', manageSubscription);
@@ -490,10 +474,6 @@
             
             // Reactivate subscription button
             document.getElementById('reactivate-subscription-btn').addEventListener('click', reactivateSubscription);
-            
-            // Billing option buttons
-            document.getElementById('monthly-btn').addEventListener('click', () => changeBillingCycle('monthly'));
-            document.getElementById('yearly-btn').addEventListener('click', () => changeBillingCycle('yearly'));
         }
 
         // Removed updatePlanButtons - no longer needed without pricing cards
@@ -523,29 +503,6 @@
             }
         }
 
-        async function changeBillingCycle(newPlan) {
-            if (!subscriptionData) {
-                alert('No subscription data available');
-                return;
-            }
-
-            if (subscriptionData.plan === newPlan) {
-                alert('You are already on the ' + newPlan + ' billing cycle');
-                return;
-            }
-
-            if (!confirm(`Are you sure you want to change to ${newPlan} billing? This will create a new subscription and cancel the current one.`)) {
-                return;
-            }
-
-            try {
-                // For billing cycle changes, redirect to Stripe Customer Portal
-                await manageSubscription();
-            } catch (error) {
-                console.error('Error changing billing cycle:', error);
-                alert('Failed to change billing cycle. Please try again.');
-            }
-        }
 
         async function cancelSubscription() {
             // Check if user has a Stripe subscription
