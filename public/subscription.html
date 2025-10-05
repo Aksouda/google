@@ -313,6 +313,24 @@
     <script>
         let currentUser = null;
         let subscriptionData = null;
+
+        // Helper function to format dates with full month names
+        function formatDateWithMonthName(dateString) {
+            if (!dateString) return 'Unknown date';
+            
+            try {
+                const date = new Date(dateString);
+                const options = { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                };
+                return date.toLocaleDateString('en-US', options);
+            } catch (error) {
+                console.error('Date formatting error:', error);
+                return 'Invalid date';
+            }
+        }
         
         // Initialize page
         document.addEventListener('DOMContentLoaded', async () => {
@@ -395,7 +413,7 @@
             statusDiv.className = `plan-status ${planStatus}`;
             
             // Build details
-            let details = `Member since ${new Date(currentUser.created_at).toLocaleDateString()}`;
+            let details = `Member since ${formatDateWithMonthName(currentUser.created_at)}`;
             
             if (subscriptionData) {
                 if (subscriptionData.plan) {
@@ -416,18 +434,18 @@
                 if (subscriptionData.cancel_at_period_end) {
                     // Use end_date (which contains the current_period_end from Stripe)
                     const cancelDate = subscriptionData.end_date 
-                        ? new Date(subscriptionData.end_date).toLocaleDateString()
-                        : (subscriptionData.current_period_end ? new Date(subscriptionData.current_period_end).toLocaleDateString() : 'Unknown date');
+                        ? formatDateWithMonthName(subscriptionData.end_date)
+                        : (subscriptionData.current_period_end ? formatDateWithMonthName(subscriptionData.current_period_end) : 'Unknown date');
                     details += `<br><strong style="color: #dc3545;">Your subscription will be cancelled on ${cancelDate}</strong>`;
                 } else if (subscriptionData.current_period_end) {
-                    const nextBillingDate = new Date(subscriptionData.current_period_end).toLocaleDateString();
+                    const nextBillingDate = formatDateWithMonthName(subscriptionData.current_period_end);
                     details += `<br><strong style="color: #28a745;">Your subscription renews on ${nextBillingDate}</strong>`;
                 } else {
                     // Fallback if no current_period_end is available
                     details += `<br><strong style="color: #666;">Next billing: Contact support</strong>`;
                 }
             } else if (currentUser.subscription_expires_at) {
-                const expiresDate = new Date(currentUser.subscription_expires_at).toLocaleDateString();
+                const expiresDate = formatDateWithMonthName(currentUser.subscription_expires_at);
                 if (currentUser.subscription_status === 'free') {
                     details += `<br><strong style="color: #dc3545;">Access ended: ${expiresDate}</strong>`;
                 } else {
