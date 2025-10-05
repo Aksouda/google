@@ -294,9 +294,29 @@ function setupEventListeners() {
         locationSelectEl.addEventListener('change', () => {
             const labelEl = document.getElementById('selected-location-label');
             const selectedOption = locationSelectEl.options[locationSelectEl.selectedIndex];
+            const container = document.getElementById('reviews-container');
+            
             if (labelEl && selectedOption) {
                 labelEl.textContent = `Selected: ${selectedOption.textContent}`;
             }
+            
+            // Show immediate loading feedback when location is selected
+            if (container && selectedOption && selectedOption.value) {
+                container.innerHTML = `
+                    <div class="loading-card">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">📍 Loading reviews for ${selectedOption.textContent}</div>
+                        <div class="loading-subtext">Fetching the latest reviews from Google Business Profile...</div>
+                    </div>
+                `;
+                
+                // Add loading state to the location selection area
+                const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+                if (locationSelectionArea) {
+                    locationSelectionArea.classList.add('location-selecting');
+                }
+            }
+            
             // Fetch most recent on first selection
             refreshReviews();
         });
@@ -941,6 +961,20 @@ function showTab(tabName, event = null) {
             } else if (AppState.locationsLoaded) {
                 console.log('📍 Reviews tab: Using cached locations');
             }
+            
+            // Show loading indicator if locations are still loading
+            if (AppState.isLoadingLocations && !AppState.locationsLoaded) {
+                const container = document.getElementById('reviews-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="loading-card">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">📍 Loading your business locations...</div>
+                            <div class="loading-subtext">Please wait while we fetch your Google Business Profile locations</div>
+                        </div>
+                    `;
+                }
+            }
             break;
             
         case 'settings':
@@ -986,6 +1020,26 @@ function loadBusinessLocations() {
     // Show loading state
     select.innerHTML = '<option value="">Loading locations...</option>';
     select.disabled = true;
+    
+    // Add visual loading indicator to location selection area
+    const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+    if (locationSelectionArea) {
+        locationSelectionArea.classList.add('location-selecting');
+        
+        // Add a loading indicator next to the dropdown
+        const existingLoader = locationSelectionArea.querySelector('.location-loading-indicator');
+        if (!existingLoader) {
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'location-loading-indicator';
+            loadingIndicator.innerHTML = `
+                <div style="display: inline-flex; align-items: center; gap: 8px; margin-left: 15px; color: #4285f4; font-size: 0.9rem;">
+                    <div style="width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #4285f4; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    Loading your business locations...
+                </div>
+            `;
+            locationSelectionArea.appendChild(loadingIndicator);
+        }
+    }
 
     fetch('/api/reviews/locations')
         .then(response => {
@@ -1020,6 +1074,19 @@ function loadBusinessLocations() {
                 }
                 
                 console.error('❌ Location API returned error:', data.message || data.error);
+                
+                // Clean up loading indicators on API error
+                const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+                if (locationSelectionArea) {
+                    locationSelectionArea.classList.remove('location-selecting');
+                    
+                    // Remove loading indicator
+                    const loadingIndicator = locationSelectionArea.querySelector('.location-loading-indicator');
+                    if (loadingIndicator) {
+                        loadingIndicator.remove();
+                    }
+                }
+                
                 showError(`Failed to load locations: ${data.message || data.error}`);
                 select.innerHTML = '<option value="">Error loading locations</option>';
             }
@@ -1047,6 +1114,18 @@ function loadBusinessLocations() {
                 console.log('🔒 Session expired detected by legacy handler');
                 handleSessionExpired && handleSessionExpired();
                 return;
+            }
+            
+            // Clean up loading indicators on error
+            const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+            if (locationSelectionArea) {
+                locationSelectionArea.classList.remove('location-selecting');
+                
+                // Remove loading indicator
+                const loadingIndicator = locationSelectionArea.querySelector('.location-loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.remove();
+                }
             }
             
             const select = document.getElementById('location-select');
@@ -1107,6 +1186,24 @@ async function enrichLocationsWithAddresses(locations) {
 function updateLocationsUI(locationsData) {
     const select = document.getElementById('location-select');
     const locations = locationsData.locations;
+    
+    // Clean up loading indicators
+    const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+    if (locationSelectionArea) {
+        locationSelectionArea.classList.remove('location-selecting');
+        
+        // Remove loading indicator
+        const loadingIndicator = locationSelectionArea.querySelector('.location-loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+    }
+    
+    // Clear reviews container loading state if it exists
+    const reviewsContainer = document.getElementById('reviews-container');
+    if (reviewsContainer && reviewsContainer.innerHTML.includes('loading-card')) {
+        reviewsContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">Select a location and click "Load Reviews" to see reviews</p>';
+    }
     
     select.innerHTML = '<option value="">Select a location...</option>';
     
@@ -1359,8 +1456,28 @@ function refreshReviews() {
     const locationSelect = document.getElementById('location-select');
     const unansweredOnly = document.getElementById('unanswered-only').checked;
     const selectedLocation = locationSelect.value;
+    const container = document.getElementById('reviews-container');
     
     if (selectedLocation) {
+        const selectedOption = locationSelect.options[locationSelect.selectedIndex];
+        
+        // Show immediate loading feedback
+        if (container) {
+            container.innerHTML = `
+                <div class="loading-card">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">🔄 Refreshing reviews for ${selectedOption ? selectedOption.textContent : 'selected location'}</div>
+                    <div class="loading-subtext">Fetching the latest reviews from Google Business Profile...</div>
+                </div>
+            `;
+            
+            // Add loading state to the location selection area
+            const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+            if (locationSelectionArea) {
+                locationSelectionArea.classList.add('location-selecting');
+            }
+        }
+        
         const locationId = selectedLocation.split('/').pop();
         const cacheKey = `${locationId}:${unansweredOnly}`;
         delete AppState.reviewsData[cacheKey];
@@ -1385,6 +1502,12 @@ function refreshReviews() {
 function displayReviews(reviewData, unansweredOnly, isAppending = false) {
     const container = document.getElementById('reviews-container');
     const reviews = unansweredOnly ? reviewData.reviews : reviewData.reviews;
+    
+    // Clean up loading states when reviews are displayed
+    const locationSelectionArea = document.querySelector('#reviews .tab-content > div:first-child');
+    if (locationSelectionArea) {
+        locationSelectionArea.classList.remove('location-selecting');
+    }
     
     // Store pagination info
     const locationId = AppState.currentLocationId;
@@ -1803,6 +1926,16 @@ async function loadMoreReviews() {
     
     try {
         console.log(`📄 Loading more reviews for location: ${locationId}, token: ${paginationInfo.nextPageToken}`);
+        
+        // Show loading state for load more button
+        const loadMoreBtn = document.getElementById('load-more-reviews');
+        if (loadMoreBtn) {
+            loadMoreBtn.innerHTML = `
+                <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #4285f4; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px;"></div>
+                Loading more reviews...
+            `;
+            loadMoreBtn.disabled = true;
+        }
         
         // Handle the new pagination token format
         const pageToken = paginationInfo.nextPageToken === 'continue' ? 'continue' : paginationInfo.nextPageToken;

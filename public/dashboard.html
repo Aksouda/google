@@ -13,18 +13,23 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: 
+                linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+                #f8f9fa;
+            background-size: 20px 20px;
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
         
         .container {
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            max-width: 1000px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 24px;
+            max-width: 1200px;
             margin: 0 auto;
+            border: 1px solid rgba(0,0,0,0.05);
         }
         
         @keyframes spin {
@@ -36,9 +41,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e9ecef;
         }
         
         h1 {
@@ -203,31 +208,33 @@
         
         .nav-tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #f0f0f0;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #e9ecef;
         }
         
         .tab {
             background: none;
             border: none;
-            padding: 15px 25px;
+            padding: 12px 20px;
             cursor: pointer;
-            font-size: 1rem;
-            color: #666;
-            border-bottom: 3px solid transparent;
+            font-size: 0.95rem;
+            color: #6c757d;
+            border-bottom: 2px solid transparent;
             transition: all 0.2s;
+            border-radius: 6px 6px 0 0;
         }
         
         .tab:hover {
-            color: #4285f4;
+            color: #495057;
             background: #f8f9fa;
         }
         
         .tab.active {
-            color: #4285f4;
-            border-bottom-color: #4285f4;
+            color: #495057;
+            border-bottom-color: #495057;
             background: #f8f9fa;
+            font-weight: 500;
         }
         
         .tab-content {
@@ -429,6 +436,86 @@
             animation: spin 1s linear infinite;
         }
         
+        /* Enhanced loading states for better UX */
+        .loading-overlay {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(66, 133, 244, 0.1), transparent);
+            animation: shimmer 1.5s infinite;
+            z-index: 1;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .loading-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(66, 133, 244, 0.1), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4285f4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loading-text {
+            color: #495057;
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .loading-subtext {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .location-selecting {
+            background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+            border: 2px solid #bbdefb;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { border-color: #bbdefb; }
+            50% { border-color: #90caf9; }
+            100% { border-color: #bbdefb; }
+        }
+        
 
         
         /* Disabled states */
@@ -444,24 +531,100 @@
         }
         
         @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
             .container {
-                padding: 20px;
-                margin: 10px;
+                padding: 16px;
+                margin: 0;
+                border-radius: 8px;
+                max-width: 100%;
             }
             
             .header {
                 flex-direction: column;
-                gap: 20px;
+                gap: 16px;
+                align-items: flex-start;
+                margin-bottom: 20px;
+                padding-bottom: 16px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .user-info {
+                width: 100%;
+                flex-direction: column;
+                gap: 12px;
                 align-items: flex-start;
             }
             
             .nav-tabs {
                 flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 20px;
             }
             
             .tab {
-                padding: 10px 15px;
-                font-size: 0.9rem;
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                flex: 1;
+                min-width: calc(50% - 4px);
+            }
+            
+            .reviews-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .location-cards-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 16px;
+            }
+            
+            .stat-card {
+                padding: 20px;
+            }
+            
+            .stat-number {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header h1 {
+                font-size: 1.25rem;
+            }
+            
+            .tab {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+                min-width: 100%;
+            }
+            
+            .stat-number {
+                font-size: 1.75rem;
+            }
+            
+            .location-card {
+                padding: 20px;
+            }
+            
+            .location-card-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 2rem;
             }
         }
     </style>
@@ -610,20 +773,6 @@
                             Show only unanswered reviews
                         </label>
                     </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button data-action="load-reviews" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                            🔄 Refresh Reviews
-                        </button>
-                        <button data-action="debug-pagination" style="padding: 8px 16px; background: #ffc107; color: black; border: none; border-radius: 6px; cursor: pointer;">
-                            🔍 Debug
-                        </button>
-                        <button data-action="check-reply-history" style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            📝 History
-                        </button>
-                        <button data-action="clear-reply-history" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            🗑️ Clear
-                        </button>
-                    </div>
                 </div>
             </div>
             
@@ -682,51 +831,6 @@
                 </button>
             </div>
 
-            <!-- OpenAI API Configuration -->
-            <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #d4edda;">
-                <h3 style="margin-bottom: 15px; color: #155724;">🤖 AI-Powered Review Responses</h3>
-                <p style="color: #155724; margin-bottom: 15px;">Configure OpenAI API to generate intelligent, personalized review responses that understand context and use reviewer names.</p>
-                
-                <div style="margin-bottom: 15px;">
-                    <label for="openai-api-key" style="display: block; margin-bottom: 5px; font-weight: 500; color: #155724;">OpenAI API Key:</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="password" id="openai-api-key" placeholder="sk-..." 
-                               style="flex: 1; padding: 10px; border: 1px solid #c3e6cb; border-radius: 5px; font-family: monospace;">
-                        <button id="test-openai-btn" data-action="test-openai" 
-                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                            🧪 Test API
-                        </button>
-                        <button id="save-openai-btn" data-action="save-openai" 
-                                style="padding: 10px 20px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                            💾 Save
-                        </button>
-                    </div>
-                </div>
-
-                <div id="openai-status" style="padding: 10px; border-radius: 5px; margin-bottom: 15px; display: none;">
-                    <!-- Status messages will appear here -->
-                </div>
-
-                <div id="openai-features" style="display: none; background: #d1ecf1; padding: 15px; border-radius: 5px; border: 1px solid #bee5eb;">
-                    <h4 style="color: #0c5460; margin-bottom: 10px;">✨ AI Features Enabled!</h4>
-                    <ul style="color: #0c5460; margin-left: 20px;">
-                        <li>Personalized responses using reviewer names</li>
-                        <li>Context-aware replies that understand the review content</li>
-                        <li>Compassionate and professional tone</li>
-                        <li>Follow your business guidelines (no promises, use "team" instead of staff names)</li>
-                    </ul>
-                </div>
-
-                <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border: 1px solid #ffeaa7; margin-top: 15px;">
-                    <h5 style="color: #856404; margin-bottom: 8px;">💡 How to get your OpenAI API Key:</h5>
-                    <ol style="color: #856404; margin-left: 20px; font-size: 0.9rem;">
-                        <li>Visit <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #0066cc;">platform.openai.com/api-keys</a></li>
-                        <li>Create a new API key</li>
-                        <li>Copy and paste it above</li>
-                        <li>Make sure you have credits in your OpenAI account</li>
-                    </ol>
-                </div>
-            </div>
 
             <!-- API Test Results -->
             <div id="api-test-results" style="background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #dee2e6; display: none;">

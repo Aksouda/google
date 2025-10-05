@@ -13,22 +13,27 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: 
+                linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+                #f8f9fa;
+            background-size: 20px 20px;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 10px;
         }
         
         .container {
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 24px;
             max-width: 1200px;
             width: 100%;
             text-align: center;
+            border: 1px solid rgba(0,0,0,0.05);
         }
         
         .success-icon {
@@ -124,6 +129,88 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin-top: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            .container {
+                padding: 16px;
+                margin: 0;
+                border-radius: 8px;
+                max-width: 100%;
+            }
+            
+            .success-icon {
+                font-size: 3rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .location-cards-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+                margin-top: 20px;
+            }
+            
+            .location-card {
+                padding: 20px;
+            }
+            
+            .location-card-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 2rem;
+            }
+            
+            .location-card-title {
+                font-size: 1.1rem;
+            }
+            
+            .status-grid {
+                gap: 12px;
+                margin: 20px 0;
+            }
+            
+            .status-item {
+                padding: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .success-icon {
+                font-size: 2.5rem;
+            }
+            
+            h1 {
+                font-size: 1.25rem;
+            }
+            
+            .location-card {
+                padding: 16px;
+            }
+            
+            .location-card-icon {
+                width: 45px;
+                height: 45px;
+                font-size: 1.75rem;
+            }
+            
+            .location-card-title {
+                font-size: 1rem;
+            }
+            
+            .location-card-address {
+                font-size: 0.85rem;
+            }
         }
 
         .location-card {
