@@ -10,6 +10,12 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
 }
 
+// Log environment configuration for debugging
+console.log('🔧 Stripe configuration:');
+console.log('  - Secret Key:', process.env.STRIPE_SECRET_KEY ? `${process.env.STRIPE_SECRET_KEY.substring(0, 10)}...` : 'MISSING');
+console.log('  - Frontend URL:', process.env.FRONTEND_URL || 'MISSING');
+console.log('  - Portal Return URL:', process.env.STRIPE_PORTAL_RETURN_URL || 'Using default (FRONTEND_URL/subscription.html)');
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
 
 // Initialize Supabase
@@ -586,14 +592,17 @@ router.post('/create-portal-session', requireAppAuth, async (req, res) => {
       });
     }
 
+    // Get return URL from environment variable or use default
+    const returnUrl = process.env.STRIPE_PORTAL_RETURN_URL || `${process.env.FRONTEND_URL}/subscription.html`;
+    
     console.log('🔧 Creating Stripe portal session for customer:', user.stripe_customer_id);
-    console.log('🔧 Return URL:', `${process.env.FRONTEND_URL}/subscription.html`);
+    console.log('🔧 Return URL:', returnUrl);
 
     // Create portal session
     try {
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: user.stripe_customer_id,
-        return_url: `${process.env.FRONTEND_URL}/subscription.html`,
+        return_url: returnUrl,
       });
 
       console.log('✅ Portal session created successfully:', portalSession.id);
