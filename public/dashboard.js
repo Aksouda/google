@@ -601,36 +601,57 @@ async function loadLocationStatistics() {
     try {
         const locationId = selectedLocation.split('/').pop();
         
-        // Fetch all reviews to calculate statistics
-        const response = await fetch(`/api/reviews/location/${locationId}`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-                const reviewData = data.data;
-                
-                // Calculate statistics
-                const totalReviews = reviewData.reviews ? reviewData.reviews.length : 0;
-                const unansweredReviews = reviewData.unansweredReviews ? reviewData.unansweredReviews.length : 0;
-                const respondedReviews = totalReviews - unansweredReviews;
-                const averageRating = reviewData.averageRating || 0;
-                
-                // Update UI
-                document.getElementById('responded-count').textContent = respondedReviews;
-                document.getElementById('unresponded-count').textContent = unansweredReviews;
-                document.getElementById('average-rating').textContent = averageRating > 0 ? averageRating.toFixed(1) : 'N/A';
-                
-                // Store current location for "Manage Reviews" button
-                AppState.overviewSelectedLocation = selectedLocation;
-                AppState.overviewSelectedLocationName = locationDisplayName;
-                
-                console.log(`📊 Loaded statistics for ${locationDisplayName}: ${respondedReviews} responded, ${unansweredReviews} unresponded, ${averageRating} avg rating`);
-            } else {
-                throw new Error(data.message || 'Failed to load reviews');
-            }
-        } else {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Clear backend pagination cache to ensure we can iterate all pages freshly
+        try {
+            await fetch('/api/reviews/clear-cache', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locationId })
+            });
+        } catch (e) {
+            console.warn('Could not clear backend pagination cache before stats load:', e);
         }
+        
+        // 1) Accurately count unanswered reviews by paging unansweredOnly
+        let unansweredCount = 0;
+        let nextPageToken = undefined;
+        let safetyCounter = 0;
+        do {
+            const baseUnansweredUrl = `/api/reviews/location/${locationId}?unansweredOnly=true&pageSize=100`;
+            const url = `${baseUnansweredUrl}${nextPageToken ? `&pageToken=${encodeURIComponent(nextPageToken)}` : ''}`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+            const page = await resp.json();
+            if (!page.success || !page.data) throw new Error(page.message || 'Failed to load unanswered reviews');
+            const pageData = page.data;
+            const pageUnanswered = Array.isArray(pageData.unansweredReviews)
+                ? pageData.unansweredReviews.length
+                : (Array.isArray(pageData.reviews) ? pageData.reviews.length : 0);
+            unansweredCount += pageUnanswered;
+            nextPageToken = pageData.hasNextPage ? pageData.nextPageToken : undefined;
+            safetyCounter += 1;
+        } while (nextPageToken && safetyCounter < 50);
+        
+        // 2) Fetch overall reviews once to get total and average
+        const allResp = await fetch(`/api/reviews/location/${locationId}`);
+        if (!allResp.ok) throw new Error(`HTTP ${allResp.status}: ${allResp.statusText}`);
+        const allData = await allResp.json();
+        if (!allData.success || !allData.data) throw new Error(allData.message || 'Failed to load reviews');
+        const reviewData = allData.data;
+        const totalReviews = reviewData.totalReviews || (reviewData.reviews ? reviewData.reviews.length : 0);
+        const averageRating = reviewData.averageRating || 0;
+        const respondedReviews = Math.max(totalReviews - unansweredCount, 0);
+        
+        // 3) Update UI
+        document.getElementById('responded-count').textContent = respondedReviews;
+        document.getElementById('unresponded-count').textContent = unansweredCount;
+        document.getElementById('average-rating').textContent = averageRating > 0 ? averageRating.toFixed(1) : 'N/A';
+        
+        // Store current location for "Manage Reviews" button
+        AppState.overviewSelectedLocation = selectedLocation;
+        AppState.overviewSelectedLocationName = locationDisplayName;
+        
+        console.log(`📊 Loaded statistics for ${locationDisplayName}: ${respondedReviews} responded, ${unansweredCount} unresponded, ${averageRating} avg rating`);
     } catch (error) {
         console.error('❌ Error loading location statistics:', error);
         document.getElementById('responded-count').textContent = 'Error';
@@ -658,8 +679,8 @@ function goToReviewsFromOverview() {
             AppState.currentLocation = AppState.overviewSelectedLocation;
             AppState.currentLocationId = AppState.overviewSelectedLocation.split('/').pop();
             
-            // Auto-load reviews
-            loadReviews();
+            // Auto-load reviews using the same logic as refresh (bypass cache, clear backend pagination)
+            refreshReviews();
         }
     }, 100);
 }
