@@ -179,6 +179,33 @@ async function checkAuthentication() {
     return false;
 }
 
+// Helper function to manage overview button visibility
+function updateOverviewButtonVisibility() {
+    const locationSelect = document.getElementById('overview-location-select');
+    const loadLocationsBtn = document.getElementById('load-locations-btn');
+    const loadStatsBtn = document.getElementById('load-stats-btn');
+    
+    if (!locationSelect || !loadLocationsBtn || !loadStatsBtn) return;
+    
+    // Check if dropdown has actual location options (not just placeholder)
+    const hasLocations = locationSelect.options.length > 1 && 
+                       locationSelect.options[1].value !== '';
+    
+    // Show/hide Load Locations button
+    if (hasLocations) {
+        loadLocationsBtn.style.display = 'none';
+    } else {
+        loadLocationsBtn.style.display = 'inline-block';
+    }
+    
+    // Show/hide Load Statistics button
+    if (hasLocations) {
+        loadStatsBtn.style.display = 'inline-block';
+    } else {
+        loadStatsBtn.style.display = 'none';
+    }
+}
+
 function showAuthenticationRequired() {
     const container = document.querySelector('.container');
     if (container) {
@@ -228,6 +255,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Set up event listeners for buttons
     setupEventListeners();
+    
+    // Initialize button visibility
+    updateOverviewButtonVisibility();
     
     // Smart initialization - load only essential data first
     loadUserInfo();
@@ -422,9 +452,6 @@ function setupEventListeners() {
         else if (action === 'load-locations-overview') {
             loadLocationsOverview();
         }
-        else if (action === 'refresh-overview') {
-            refreshOverviewStats();
-        }
         else if (action === 'go-to-reviews') {
             goToReviewsTab();
         }
@@ -446,7 +473,7 @@ function setupEventListeners() {
     }
     
     // Overview statistics buttons
-    const loadStatsBtn = document.getElementById('load-location-stats');
+    const loadStatsBtn = document.getElementById('load-stats-btn');
     if (loadStatsBtn) {
         loadStatsBtn.addEventListener('click', loadLocationStatistics);
     }
@@ -507,11 +534,6 @@ function updateOverviewStatsFromCache() {
     // Keeping it for potential future use
 }
 
-async function refreshOverviewStats() {
-    console.log('🔄 Refreshing overview statistics...');
-    
-    updateOverviewStats();
-}
 
 async function loadLocationsOverview() {
     console.log('📍 Loading locations for overview...');
@@ -550,6 +572,9 @@ function updateOverviewLocationSelector() {
     } else {
         select.innerHTML = '<option value="">Loading locations...</option>';
     }
+    
+    // Update button visibility based on dropdown state
+    updateOverviewButtonVisibility();
 }
 
 // Function to load location statistics
@@ -949,8 +974,15 @@ function showTab(tabName, event = null) {
     
     switch(tabName) {
         case 'overview':
+            // Load locations if not already loaded when switching to overview tab
+            if (!AppState.locationsLoaded && !AppState.isLoadingLocations) {
+                console.log('📍 Overview tab: Loading locations...');
+                loadBusinessLocations();
+            }
             // Update overview stats when switching to overview tab
             updateOverviewStats();
+            // Update button visibility
+            updateOverviewButtonVisibility();
             break;
             
         case 'reviews':
@@ -2616,7 +2648,10 @@ async function loadOpenAIStatus() {
         const data = await response.json();
         
         if (data.success && data.configured) {
-            document.getElementById('openai-features').style.display = 'block';
+            const openaiFeatures = document.getElementById('openai-features');
+            if (openaiFeatures) {
+                openaiFeatures.style.display = 'block';
+            }
             showOpenAIStatus('✅ OpenAI API is configured and ready!', 'success');
             
             // Load saved API key into the input field (masked)
@@ -2660,14 +2695,23 @@ async function loadOpenAIStatus() {
                         // Update review buttons
                         updateReviewResponseButtons();
                     } else {
-                        document.getElementById('openai-features').style.display = 'none';
+                        const openaiFeatures = document.getElementById('openai-features');
+                        if (openaiFeatures) {
+                            openaiFeatures.style.display = 'none';
+                        }
                     }
                 } catch (configError) {
                     console.error('❌ Error auto-configuring OpenAI:', configError);
-                    document.getElementById('openai-features').style.display = 'none';
+                    const openaiFeatures = document.getElementById('openai-features');
+                    if (openaiFeatures) {
+                        openaiFeatures.style.display = 'none';
+                    }
                 }
             } else {
-                document.getElementById('openai-features').style.display = 'none';
+                const openaiFeatures = document.getElementById('openai-features');
+                if (openaiFeatures) {
+                    openaiFeatures.style.display = 'none';
+                }
             }
         }
     } catch (error) {

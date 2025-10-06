@@ -672,8 +672,11 @@
                     <select id="overview-location-select" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; min-width: 250px;">
                         <option value="">Select a location to view statistics...</option>
                     </select>
-                    <button id="load-location-stats" style="padding: 8px 16px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                        Load Statistics
+                    <button id="load-locations-btn" data-action="load-locations-overview" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        📍 Load Locations
+                    </button>
+                    <button id="load-stats-btn" style="padding: 8px 16px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; display: none;">
+                        📊 Load Statistics
                     </button>
                 </div>
             </div>
@@ -707,23 +710,6 @@
                 </div>
             </div>
             
-            <!-- Quick Actions Section -->
-            <div style="background: linear-gradient(135deg, #fff3cd, #fef9e7); padding: 25px; border-radius: 12px; border: 1px solid #ffeaa7;">
-                <h3 style="margin-bottom: 20px; color: #856404; display: flex; align-items: center; gap: 10px;">
-                    <span>⚡</span> Quick Actions
-                </h3>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <button data-action="load-locations-overview" style="padding: 12px 20px; background: #4285f4; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
-                        📍 Load Locations
-                    </button>
-                    <button data-action="refresh-overview" style="padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
-                        🔄 Refresh Data
-                    </button>
-                    <button data-action="go-to-reviews" style="padding: 12px 20px; background: #ffc107; color: black; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
-                        📝 Manage Reviews
-                    </button>
-                </div>
-            </div>
         </div>
         
         <div id="reviews" class="tab-content">
