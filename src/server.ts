@@ -31,6 +31,10 @@ import { SupabaseSessionStore } from './config/sessionStore';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy - required for apps behind reverse proxy (Traefik, Nginx, etc.)
+// This ensures correct protocol (HTTPS) and host in redirect URLs
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: {
